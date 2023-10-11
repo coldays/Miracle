@@ -110,7 +110,6 @@ void CreateCrosshair() {
 }
 
 int main() {
-	PlaySound(TEXT("Tetris.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 	auto app = App(
 		"Tetris",
 		AppConfig{
@@ -150,6 +149,7 @@ int main() {
 				.entityDestroyedCallback = [](EntityId) { updateTitle(); }
 			},
 			.startScript = []() {
+				InitSound();
 				CreateGrid();
 				CreateBorders();
 				//CreateCrosshair();
@@ -165,6 +165,8 @@ int main() {
 	);
 
 	int exitCode = app.run();
+
+	DeinitSound();
 
 	return exitCode;
 }

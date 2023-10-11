@@ -3,12 +3,9 @@
 #include <Miracle/Miracle.hpp>
 #include "Row.h"
 #include "Shapes.h"
-#include <cubeb/cubeb.h>
-#include <Windows.h>
+#include "Sound.h"
 
 //#define DEBUG_TEST 1
-
-#pragma comment( lib, "Winmm.lib" )
 
 using namespace Miracle;
 
@@ -25,6 +22,8 @@ private:
 	std::optional<EntityContext> m_currentShape;
 	const float m_clearPause = 1.0f;
 	float m_clearPauseTime = 0;
+	Sound m_theme = Sound("tetris.wav");
+	Sound m_clickSound = Sound("Click.wav");
 
 	void Tick() {
 		bool fullRow = false;
@@ -90,6 +89,13 @@ public:
 	GameManager(const EntityContext& context) : Behavior(context) {
 		Instance = this;
 		srand(time(0));
+
+		m_theme.SetLoop(true);
+		m_theme.Play();
+	}
+
+	void PlayClickSound() {
+		m_clickSound.Play();
 	}
 
 	void FinalizeShape(std::vector<EntityContext>& entities) {
@@ -220,7 +226,7 @@ private:
 		while (!m_destroyed) {
 			Fall();
 		}
-		//PlaySound(TEXT("Click.wav"), NULL, SND_FILENAME | SND_ASYNC);
+		m_gameManager->PlayClickSound();
 	}
 
 	bool IsOutsideOfBounds(float x) {

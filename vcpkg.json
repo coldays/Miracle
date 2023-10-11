@@ -6,6 +6,8 @@
     "tinyfiledialogs",
     "vulkan",
     "vulkan-memory-allocator-hpp",
-    "entt"
+    "entt",
+    "openal-soft",
+    "freealut"
   ]
 }

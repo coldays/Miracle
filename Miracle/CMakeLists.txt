@@ -17,6 +17,8 @@ find_package(tinyfiledialogs CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(unofficial-vulkan-memory-allocator-hpp CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
+find_package(OpenAL CONFIG REQUIRED)
+find_package(FreeALUT CONFIG REQUIRED)
 
 # Link 3rd-party libraries
 target_link_libraries(
@@ -27,6 +29,8 @@ target_link_libraries(
 	PRIVATE Vulkan::Vulkan
 	PRIVATE unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
 	PRIVATE EnTT::EnTT
+	PUBLIC OpenAL::OpenAL
+	PUBLIC FreeALUT::alut
 )
 
 # Include directories

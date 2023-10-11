@@ -67,9 +67,9 @@ namespace Miracle::Infrastructure::View::Glfw {
 	}
 
 	Window::~Window() {
-		glfwDestroyWindow(m_window);
-
 		m_logger.info("Application window destroyed");
+
+		glfwDestroyWindow(m_window);
 	}
 
 	void Window::show() {
