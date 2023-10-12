@@ -74,6 +74,10 @@ public:
 		alSourcePlay(m_source);
 	}
 
+	void Pause() {
+		alSourcePause(m_source);
+	}
+
 	void Stop() {
 		alSourceStop(m_source);
 	}

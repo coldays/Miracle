@@ -13,13 +13,28 @@ set_target_properties(
 add_custom_command(
         TARGET Tetris POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_SOURCE_DIR}/Tetris.wav
-                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Tetris.wav)
+                ${CMAKE_CURRENT_SOURCE_DIR}/Theme.wav
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Theme.wav)
 add_custom_command(
         TARGET Tetris POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/Click.wav
                 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Click.wav)
+add_custom_command(
+        TARGET Tetris POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/GameOver.wav
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/GameOver.wav)
+add_custom_command(
+        TARGET Tetris POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/Tetris.wav
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Tetris.wav)
+add_custom_command(
+        TARGET Tetris POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/Row.wav
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Row.wav)
 
 # Linking
 target_link_libraries(Tetris

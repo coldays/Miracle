@@ -22,21 +22,31 @@ private:
 	std::optional<EntityContext> m_currentShape;
 	const float m_clearPause = 1.0f;
 	float m_clearPauseTime = 0;
-	Sound m_theme = Sound("tetris.wav");
+	Sound m_theme = Sound("Theme.wav");
 	Sound m_clickSound = Sound("Click.wav");
+	Sound m_rowCompleteSound = Sound("Row.wav");
+	Sound m_tetrisSound = Sound("Tetris.wav");
+	Sound m_gameOverSound = Sound("GameOver.wav");
+	//Sound m_levelUpSound = Sound("LevelUp.wav");
 
 	void Tick() {
-		bool fullRow = false;
+		int fullRows = 0;
 		// Check if we have a complete row
 		for (int i = m_height - 1; i >= 0; i--) {
 			if (m_rows[i].IsFull()) {
-				fullRow = true;
+				fullRows++;
 				m_rows[i].MarkedForDeletion = true;
 			}
 		}
 
-		if (fullRow) {
+		if (fullRows > 0) {
 			m_clearPauseTime = m_clearPause;
+			m_theme.Pause();
+			if (fullRows < 4) {
+				m_rowCompleteSound.Play();
+			} else {
+				m_tetrisSound.Play();
+			}
 			return;
 		}
 
@@ -47,6 +57,8 @@ private:
 			if (WillOverlap(m_currentShape.value(), Vector3{})) {
 				GameOver = true;
 				Logger::info("**** GAME OVER! ****");
+				m_theme.Stop();
+				m_gameOverSound.Play();
 				return;
 			}
 		}
@@ -64,10 +76,11 @@ private:
 			}
 		}
 		Lines += removed;
-		Score += removed * 10;
+		Score += removed * 10 * (Level + 1);
 		if (Lines >= (Level + 1) * 10) {
 			Level++;
 			TickIntervalSeconds *= .8f;
+			// m_levelUpSound.Play();
 		}
 	}
 
@@ -94,10 +107,6 @@ public:
 		m_theme.Play();
 	}
 
-	void PlayClickSound() {
-		m_clickSound.Play();
-	}
-
 	void FinalizeShape(std::vector<EntityContext>& entities) {
 		for (EntityContext& ec : entities) {
 			auto& pos = ec.getTransform().getTranslation();
@@ -105,6 +114,7 @@ public:
 			int colIndex = GetColumnIndex(pos.x);
 			Row& row = m_rows[rowIndex];
 			row.AddEntity(colIndex, ec);
+			m_clickSound.Play();
 		}
 
 		// Clear current shape
@@ -140,6 +150,7 @@ public:
 			m_clearPauseTime -= DeltaTime::get();
 			if (m_clearPauseTime <= 0) {
 				ClearFullRows();
+				m_theme.Play();
 			}
 			return;
 		}
@@ -189,6 +200,7 @@ private:
 	GameManager* m_gameManager;
 	bool m_destroyed = false;
 	float m_sideBarrier = 5;
+	float m_bottomBarrier = -9.5;
 
 	void Fall() {
 		if (m_destroyed) return;
@@ -203,7 +215,7 @@ private:
 				lowestY = pos.y;
 			}
 		}
-		shouldFinalize |= lowestY <= -9.5;
+		shouldFinalize |= lowestY <= m_bottomBarrier;
 
 		// Are we touching some other block?
 		shouldFinalize |= m_gameManager->WillOverlap(m_entities, Vector3{ .y = -1 });
@@ -226,17 +238,20 @@ private:
 		while (!m_destroyed) {
 			Fall();
 		}
-		m_gameManager->PlayClickSound();
 	}
 
-	bool IsOutsideOfBounds(float x) {
+	bool IsOutsideOfBoundsHorizontal(float x) {
 		return x <= -m_sideBarrier || x >= m_sideBarrier;
+	}
+
+	bool IsOutsideOfBoundsVertical(float y) {
+		return y <= m_bottomBarrier;
 	}
 
 	bool CanMove(const Vector3& move) {
 		for (EntityContext& ec : m_entities) {
 			auto& pos = ec.getTransform().getTranslation();
-			if (IsOutsideOfBounds(pos.x + move.x))
+			if (IsOutsideOfBoundsHorizontal(pos.x + move.x))
 				return false;
 			if (m_gameManager->WillOverlap(ec, move)) {
 				return false;
@@ -254,10 +269,11 @@ private:
 			auto relativeTranslate = childTransform.getTranslation() - parentTranslate;
 			Vector3 rotatedTranslation = MathUtilities::rotateVector(relativeTranslate,
 				Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
-			Vector3 result = parentTranslate + rotatedTranslation;
-			if (IsOutsideOfBounds(result.x))
+			Vector3 newPos = parentTranslate + rotatedTranslation;
+			if (IsOutsideOfBoundsHorizontal(newPos.x) ||
+				IsOutsideOfBoundsVertical(newPos.y))
 				return false;
-			if (m_gameManager->WillOverlap(ec, result))
+			if (m_gameManager->WillOverlap(ec, newPos))
 				return false;
 		}
 		return true;
