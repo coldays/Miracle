@@ -12,8 +12,7 @@ using namespace Miracle;
 class GameManager;
 EntityContext CreateBlock(ShapeType);
 
-//float TickIntervalSeconds = 0.5;
-float TickIntervalSeconds = 1;
+float TickIntervalSeconds = 0.5;
 
 class GameManager : public Behavior {
 private:
@@ -284,7 +283,8 @@ private:
 		auto& parentTranslate = transform.getTranslation();
 		for (EntityContext& ec : m_entities) {
 			auto& childTransform = ec.getTransform();
-			auto relativeTranslate = childTransform.getTranslation() - parentTranslate;
+			auto pos = childTransform.getTranslation();
+			auto relativeTranslate = pos - parentTranslate;
 			Vector3 rotatedTranslation = MathUtilities::rotateVector(relativeTranslate,
 				Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
 			Vector3 newPos = parentTranslate + rotatedTranslation;
@@ -296,7 +296,7 @@ private:
 				Logger::info("Cannot rotate: Vertical Bounds");
 				return false;
 			}
-			if (m_gameManager->WillOverlap(ec, newPos)) {
+			if (m_gameManager->WillOverlap(ec, newPos - pos )) {
 				Logger::info("Cannot rotate: Overlap");
 				return false;
 			}
