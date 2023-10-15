@@ -92,7 +92,7 @@ private:
 				scoreBase = 1200;
 				break;
 		}
-		Score += removed * (Level + 1);
+		Score += scoreBase * (Level + 1);
 		if (Lines >= (Level + 1) * 10) {
 			Level++;
 			TickIntervalSeconds *= .8f;
