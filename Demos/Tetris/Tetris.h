@@ -52,7 +52,7 @@ private:
 
 		if (!m_currentShape.has_value()) {
 			//m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 6)));
-			m_currentShape.emplace(CreateBlock(ShapeType::Line));
+			m_currentShape.emplace(CreateBlock(ShapeType::T));
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value(), Vector3{})) {
 				GameOver = true;
@@ -270,11 +270,18 @@ private:
 			Vector3 rotatedTranslation = MathUtilities::rotateVector(relativeTranslate,
 				Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
 			Vector3 newPos = parentTranslate + rotatedTranslation;
-			if (IsOutsideOfBoundsHorizontal(newPos.x) ||
-				IsOutsideOfBoundsVertical(newPos.y))
+			if (IsOutsideOfBoundsHorizontal(newPos.x)) {
+				Logger::info("Cannot rotate: Horizontal Bounds");
 				return false;
-			if (m_gameManager->WillOverlap(ec, newPos))
+			}
+			if (IsOutsideOfBoundsVertical(newPos.y)) {
+				Logger::info("Cannot rotate: Vertical Bounds");
 				return false;
+			}
+			/*if (m_gameManager->WillOverlap(ec, newPos)) {
+				Logger::info("Cannot rotate: Overlap");
+				return false;
+			}*/
 		}
 		return true;
 	}
@@ -292,6 +299,7 @@ public:
 
 		if (Keyboard::isKeyPressed(KeyboardKey::keySpace)) {
 			FallToEnd();
+			return;
 		}
 
 		float move = Keyboard::isKeyPressed(KeyboardKey::keyD) - Keyboard::isKeyPressed(KeyboardKey::keyA);
@@ -349,6 +357,8 @@ EntityContext CreateBlock(ShapeType type) {
 			break;
 		case ShapeType::T:
 			entities = CreateT(startPos);
+			startPos.x += 0.5;
+			startPos.y -= 0.5;
 			break;
 		case ShapeType::J:
 			entities = CreateJ(startPos);
@@ -369,10 +379,10 @@ EntityContext CreateBlock(ShapeType type) {
 		.transformConfig = TransformConfig{
 			.translation = Vector3::createFromVector2(startPos, 0),
 		},
-		/*.appearanceConfig = AppearanceConfig{
+		.appearanceConfig = AppearanceConfig{
 			.meshIndex = 0,
 			.color = ColorRgb::red
-		},*/
+		},
 		.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(entities)
 		});
 }
