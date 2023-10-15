@@ -12,7 +12,8 @@ using namespace Miracle;
 class GameManager;
 EntityContext CreateBlock(ShapeType);
 
-float TickIntervalSeconds = 0.5;
+//float TickIntervalSeconds = 0.5;
+float TickIntervalSeconds = 1;
 
 class GameManager : public Behavior {
 private:
@@ -51,8 +52,8 @@ private:
 		}
 
 		if (!m_currentShape.has_value()) {
-			//m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 6)));
-			m_currentShape.emplace(CreateBlock(ShapeType::T));
+			m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 6)));
+			//m_currentShape.emplace(CreateBlock(ShapeType::T));
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value(), Vector3{})) {
 				GameOver = true;
@@ -76,7 +77,23 @@ private:
 			}
 		}
 		Lines += removed;
-		Score += removed * 10 * (Level + 1);
+		// Gameboy scoring system:
+		int scoreBase = 0;
+		switch (removed) {
+			case 1:
+				scoreBase = 40;
+				break;
+			case 2:
+				scoreBase = 100;
+				break;
+			case 3:
+				scoreBase = 300;
+				break;
+			case 4:
+				scoreBase = 1200;
+				break;
+		}
+		Score += removed * (Level + 1);
 		if (Lines >= (Level + 1) * 10) {
 			Level++;
 			TickIntervalSeconds *= .8f;
@@ -144,8 +161,9 @@ public:
 			return;
 
 		if (m_clearPauseTime > 0) {
+			const float numberOfFlashes = 4;
 			for (int i = 0; i < m_height; i++) {
-				m_rows[i].UpdateVisual(m_clearPause/4);
+				m_rows[i].UpdateVisual(m_clearPause/numberOfFlashes);
 			}
 			m_clearPauseTime -= DeltaTime::get();
 			if (m_clearPauseTime <= 0) {
@@ -278,10 +296,10 @@ private:
 				Logger::info("Cannot rotate: Vertical Bounds");
 				return false;
 			}
-			/*if (m_gameManager->WillOverlap(ec, newPos)) {
+			if (m_gameManager->WillOverlap(ec, newPos)) {
 				Logger::info("Cannot rotate: Overlap");
 				return false;
-			}*/
+			}
 		}
 		return true;
 	}
@@ -305,6 +323,12 @@ public:
 		float move = Keyboard::isKeyPressed(KeyboardKey::keyD) - Keyboard::isKeyPressed(KeyboardKey::keyA);
 
 		int rotate = Keyboard::isKeyPressed(KeyboardKey::keyW) - Keyboard::isKeyPressed(KeyboardKey::keyS);
+
+		// Fall faster if arrow down is held
+		float tickrate = TickIntervalSeconds;
+		if (Keyboard::isKeyHeld(KeyboardKey::keyDown)) {
+			tickrate = fminf(tickrate, 0.05);
+		}
 
 		auto& transform = m_context.getTransform();
 
@@ -338,7 +362,7 @@ public:
 		}
 
 		m_tickTime += DeltaTime::get();
-		if (m_tickTime > TickIntervalSeconds) {
+		if (m_tickTime > tickrate) {
 			Fall();
 			m_tickTime = 0;
 		}
@@ -379,10 +403,10 @@ EntityContext CreateBlock(ShapeType type) {
 		.transformConfig = TransformConfig{
 			.translation = Vector3::createFromVector2(startPos, 0),
 		},
-		.appearanceConfig = AppearanceConfig{
+		/*.appearanceConfig = AppearanceConfig{
 			.meshIndex = 0,
 			.color = ColorRgb::red
-		},
+		},*/
 		.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(entities)
 		});
 }
