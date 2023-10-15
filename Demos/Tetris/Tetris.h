@@ -218,6 +218,8 @@ private:
 	bool m_destroyed = false;
 	float m_sideBarrier = 5;
 	float m_bottomBarrier = -9.5;
+	int m_softDroppedBlocks = 0;
+	int m_hardDroppedBlocks = 0;
 
 	void Fall() {
 		if (m_destroyed) return;
@@ -239,6 +241,9 @@ private:
 
 		if (shouldFinalize) {
 			m_gameManager->FinalizeShape(m_entities);
+			// Fastfall bonus score
+			m_gameManager->Score += m_softDroppedBlocks;
+			m_gameManager->Score += m_hardDroppedBlocks * 2;
 			// Self-destruct
 			m_context.destroyEntity();
 			m_destroyed = true;
@@ -254,6 +259,7 @@ private:
 	void FallToEnd() {
 		while (!m_destroyed) {
 			Fall();
+			m_hardDroppedBlocks++;
 		}
 	}
 
@@ -328,6 +334,8 @@ public:
 		float tickrate = TickIntervalSeconds;
 		if (Keyboard::isKeyHeld(KeyboardKey::keyDown)) {
 			tickrate = fminf(tickrate, 0.05);
+		} else {
+			m_softDroppedBlocks = 0;
 		}
 
 		auto& transform = m_context.getTransform();
@@ -365,6 +373,9 @@ public:
 		if (m_tickTime > tickrate) {
 			Fall();
 			m_tickTime = 0;
+			if (Keyboard::isKeyHeld(KeyboardKey::keyDown)) {
+				m_softDroppedBlocks++;
+			}
 		}
 	}
 };
