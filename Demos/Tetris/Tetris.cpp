@@ -110,6 +110,25 @@ void CreateCrosshair() {
 }
 
 int main() {
+
+	// Add normal rectangles
+	std::vector<Mesh> meshes = std::vector<Mesh>{
+		{
+			.vertices = std::vector{
+				Vertex{.position = Vector3{.x = -0.5f, .y = -0.5f, .z = 0.0f } },
+				Vertex{.position = Vector3{.x = 0.5f, .y = -0.5f, .z = 0.0f } },
+				Vertex{.position = Vector3{.x = 0.5f, .y = 0.5f, .z = 0.0f } },
+				Vertex{.position = Vector3{.x = -0.5f, .y = 0.5f, .z = 0.0f } }
+			},
+				.faces = std::vector{
+					Face{.indices = { 0, 1, 2 } },
+					Face{.indices = { 0, 2, 3 } }
+			}
+		}
+	};
+	// Add text mesh for text rendering later
+	AddTextMeshes(meshes);
+
 	auto app = App(
 		"Tetris",
 		AppConfig{
@@ -121,20 +140,7 @@ int main() {
 				.resizable = true
 			},
 			.rendererConfig = RendererConfig{
-				.meshes = std::vector<Mesh>{
-					{
-						.vertices = std::vector{
-							Vertex{.position = Vector3{.x = -0.5f, .y = -0.5f, .z = 0.0f } },
-							Vertex{.position = Vector3{.x = 0.5f, .y = -0.5f, .z = 0.0f } },
-							Vertex{.position = Vector3{.x = 0.5f, .y = 0.5f, .z = 0.0f } },
-							Vertex{.position = Vector3{.x = -0.5f, .y = 0.5f, .z = 0.0f } }
-						},
-						.faces = std::vector{
-							Face{.indices = { 0, 1, 2 } },
-							Face{.indices = { 0, 2, 3 } }
-						}
-					}
-				}
+				.meshes = meshes
 			},
 			.sceneConfig = SceneConfig{
 				.entityConfigs = std::vector<EntityConfig>{

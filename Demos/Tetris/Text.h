@@ -4,52 +4,24 @@
 
 using namespace Miracle;
 
+void AddTextMeshes(std::vector<Mesh>& meshes);
+
 class Text {
 private:
 	std::vector<EntityContext> m_entites;
+	Vector2 m_pos;
+	float m_scale;
+	ColorRgb m_color;
 
-	void CreateQuestionMark(Vector2 pos, float scale, ColorRgb color) {
-		CurrentScene::createAndGetEntity(EntityConfig{
-							.transformConfig = TransformConfig{
-								.translation = Vector3{
-									.x = pos.x,
-									.y = pos.y,
-									.z = 0},
-								.scale = scale
-							},
-							.appearanceConfig = AppearanceConfig{
-								.meshIndex = 0,
-								.color = color
-							}
-			});
-	}
+	void CreateGlyphEntity(Vector2 pos, float scale, ColorRgb color, char c);
 
-	void AddChar(Vector2 pos, float scale, ColorRgb color, char c) {
-		switch (c) {
-			case '?':
-			default:
-				CreateQuestionMark(pos, scale, color);
-				break;
-		}
-	}
+	void CreateText(Vector2 pos, float scale, ColorRgb color, std::string text);
+
+	void Clear();
 
 public:
-	Text(Vector2 pos, float scale, ColorRgb color, std::string text) {
 
-		Vector2 currentPos = pos;
-		for (char c : text) {
-			AddChar(currentPos, scale, color, c);
-			currentPos.x += 10 * scale;
-		}
-	}
-
-	void ChangeText(std::string text) {
-
-	}
-
-	void Move(Vector2 dest) {
-
-	}
-
-
+	Text(Vector2 pos, float scale, ColorRgb color, std::string text);
+	void ChangeText(std::string text);
+	void Move(Vector2 dest);
 };

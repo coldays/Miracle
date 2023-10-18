@@ -32,15 +32,15 @@ private:
 	Row m_rows[20];
 	float m_tickTime = 0;
 	std::optional<EntityContext> m_currentShape;
-	const float m_clearPause = 1.0f;
+	const float m_clearPause = 0.8f;
 	float m_clearPauseTime = 0;
 	Sound m_theme = Sound("Theme.wav");
 	Sound m_clickSound = Sound("Click.wav");
 	Sound m_rowCompleteSound = Sound("Row.wav");
 	Sound m_tetrisSound = Sound("Tetris.wav");
 	Sound m_gameOverSound = Sound("GameOver.wav");
-	//Text m_ScoreText = Text(Vector2{}, 1, ColorRgb::white, "0123456789 amglevcorints");
 	//Sound m_levelUpSound = Sound("LevelUp.wav");
+	std::optional<Text> m_ScoreText;
 
 	void Tick() {
 		int fullRows = 0;
@@ -54,10 +54,10 @@ private:
 
 		if (fullRows > 0) {
 			m_clearPauseTime = m_clearPause;
-			m_theme.Pause();
 			if (fullRows < 4) {
 				m_rowCompleteSound.Play();
 			} else {
+				m_theme.Pause();
 				m_tetrisSound.Play();
 			}
 			return;
@@ -65,11 +65,14 @@ private:
 
 		if (!m_currentShape.has_value()) {
 			m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 6)));
-			//m_currentShape.emplace(CreateBlock(ShapeType::T));
+			//m_currentShape.emplace(CreateBlock(ShapeType::Line));
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value(), Vector3{})) {
 				GameOver = true;
 				Logger::info("**** GAME OVER! ****");
+				Logger::info(std::string("\tScore: ") + std::to_string(Score));
+				Logger::info(std::string("\tLevel: ") + std::to_string(Level));
+				Logger::info(std::string("\Lines: ") + std::to_string(Lines));
 				m_theme.Stop();
 				m_gameOverSound.Play();
 				return;
@@ -77,7 +80,7 @@ private:
 		}
 	}
 
-	void ClearFullRows() {
+	int ClearFullRows() {
 		int removed = 0;
 		for (int i = m_height - 1; i >= 0; i--) {
 			if (m_rows[i].IsFull()) {
@@ -111,6 +114,7 @@ private:
 			TickIntervalSeconds = LevelToTickIntervalSec(Level);
 			// m_levelUpSound.Play();
 		}
+		return removed;
 	}
 
 	int GetRowIndex(float yPos) {
@@ -174,6 +178,10 @@ public:
 		if (GameOver)
 			return;
 
+		if (Keyboard::isKeyPressed(KeyboardKey::keyT)) {
+			m_ScoreText = Text(Vector2{ .x = -7.5}, 1, ColorRgb::white, "0123456789 amglevcorints");
+		}
+
 		if (m_clearPauseTime > 0) {
 			const float numberOfFlashes = 4;
 			for (int i = 0; i < m_height; i++) {
@@ -181,8 +189,11 @@ public:
 			}
 			m_clearPauseTime -= DeltaTime::get();
 			if (m_clearPauseTime <= 0) {
-				ClearFullRows();
-				m_theme.Play();
+				int removed = ClearFullRows();
+				// Resume theme if we got tetris
+				if (removed == 4) {
+					m_theme.Play();
+				}
 			}
 			return;
 		}
@@ -341,7 +352,7 @@ public:
 			return;
 		}
 
-		float move = Keyboard::isKeyPressed(KeyboardKey::keyD) - Keyboard::isKeyPressed(KeyboardKey::keyA);
+		float move = Keyboard::isKeyPressedOrRepeated(KeyboardKey::keyD) - Keyboard::isKeyPressedOrRepeated(KeyboardKey::keyA);
 
 		int rotate = Keyboard::isKeyPressed(KeyboardKey::keyW) - Keyboard::isKeyPressed(KeyboardKey::keyS);
 
