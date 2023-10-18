@@ -4,6 +4,8 @@
 #include "Row.h"
 #include "Shapes.h"
 #include "Sound.h"
+#include "Text.h"
+#include <algorithm>
 
 //#define DEBUG_TEST 1
 
@@ -12,10 +14,20 @@ using namespace Miracle;
 class GameManager;
 EntityContext CreateBlock(ShapeType);
 
+static float LevelToTickIntervalSec(int level) {
+	const float gameboyFps = 59.73;
+	const float baseFrames = 53;
+	if (level <= 10)
+		return 1.0 / (gameboyFps / (baseFrames - 4 * level));
+	level -= 10;
+	return 1.0 / (gameboyFps / (10 - level));
+}
+
 float TickIntervalSeconds = 0.5;
 
 class GameManager : public Behavior {
 private:
+	const int m_maxLevel = 20;
 	const int m_height = 20;
 	Row m_rows[20];
 	float m_tickTime = 0;
@@ -27,6 +39,7 @@ private:
 	Sound m_rowCompleteSound = Sound("Row.wav");
 	Sound m_tetrisSound = Sound("Tetris.wav");
 	Sound m_gameOverSound = Sound("GameOver.wav");
+	//Text m_ScoreText = Text(Vector2{}, 1, ColorRgb::white, "0123456789 amglevcorints");
 	//Sound m_levelUpSound = Sound("LevelUp.wav");
 
 	void Tick() {
@@ -94,8 +107,8 @@ private:
 		}
 		Score += scoreBase * (Level + 1);
 		if (Lines >= (Level + 1) * 10) {
-			Level++;
-			TickIntervalSeconds *= .8f;
+			Level = std::min(m_maxLevel, Level + 1);
+			TickIntervalSeconds = LevelToTickIntervalSec(Level);
 			// m_levelUpSound.Play();
 		}
 	}
@@ -121,6 +134,8 @@ public:
 
 		m_theme.SetLoop(true);
 		m_theme.Play();
+
+		TickIntervalSeconds = LevelToTickIntervalSec(Level);
 	}
 
 	void FinalizeShape(std::vector<EntityContext>& entities) {

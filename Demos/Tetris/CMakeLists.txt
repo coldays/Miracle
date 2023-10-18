@@ -1,5 +1,5 @@
 # Target definition
-add_executable(Tetris "Tetris.cpp" "Row.h" "Tetris.h" "Sound.h")
+add_executable(Tetris "Tetris.cpp" "Row.h" "Tetris.h" "Sound.h" "Text.h")
 
 # Target properties
 set_target_properties(
