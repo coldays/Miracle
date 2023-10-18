@@ -20,8 +20,10 @@ private:
 	void Clear();
 
 public:
-
+	Text();
 	Text(Vector2 pos, float scale, ColorRgb color, std::string text);
 	void ChangeText(std::string text);
 	void Move(Vector2 dest);
+	void Show();
+	void Hide();
 };

@@ -7,8 +7,6 @@
 #include "Text.h"
 #include <algorithm>
 
-//#define DEBUG_TEST 1
-
 using namespace Miracle;
 
 class GameManager;
@@ -29,6 +27,9 @@ class GameManager : public Behavior {
 private:
 	const int m_maxLevel = 20;
 	const int m_height = 20;
+	int m_score = 0;
+	int m_lines = 0;
+	int m_level = 0;
 	Row m_rows[20];
 	float m_tickTime = 0;
 	std::optional<EntityContext> m_currentShape;
@@ -40,7 +41,13 @@ private:
 	Sound m_tetrisSound = Sound("Tetris.wav");
 	Sound m_gameOverSound = Sound("GameOver.wav");
 	//Sound m_levelUpSound = Sound("LevelUp.wav");
-	std::optional<Text> m_ScoreText;
+	Text m_gameOverText;
+	Text m_scoreHeader;
+	Text m_scoreText;
+	Text m_levelHeader;
+	Text m_levelText;
+	Text m_LinesHeader;
+	Text m_linesText;
 
 	void Tick() {
 		int fullRows = 0;
@@ -70,11 +77,12 @@ private:
 			if (WillOverlap(m_currentShape.value(), Vector3{})) {
 				GameOver = true;
 				Logger::info("**** GAME OVER! ****");
-				Logger::info(std::string("\tScore: ") + std::to_string(Score));
-				Logger::info(std::string("\tLevel: ") + std::to_string(Level));
-				Logger::info(std::string("\Lines: ") + std::to_string(Lines));
+				Logger::info(std::string("\tScore: ") + std::to_string(m_score));
+				Logger::info(std::string("\tLevel: ") + std::to_string(m_level));
+				Logger::info(std::string("\Lines: ") + std::to_string(m_lines));
 				m_theme.Stop();
 				m_gameOverSound.Play();
+				m_gameOverText.Show();
 				return;
 			}
 		}
@@ -91,7 +99,7 @@ private:
 				removed++;
 			}
 		}
-		Lines += removed;
+		IncrementLines(removed);
 		// Gameboy scoring system:
 		int scoreBase = 0;
 		switch (removed) {
@@ -108,10 +116,10 @@ private:
 				scoreBase = 1200;
 				break;
 		}
-		Score += scoreBase * (Level + 1);
-		if (Lines >= (Level + 1) * 10) {
-			Level = std::min(m_maxLevel, Level + 1);
-			TickIntervalSeconds = LevelToTickIntervalSec(Level);
+		IncrementScore(scoreBase * (m_level + 1));
+		if (m_lines >= (m_level + 1) * 10) {
+			IncrementLevel();
+			TickIntervalSeconds = LevelToTickIntervalSec(m_level);
 			// m_levelUpSound.Play();
 		}
 		return removed;
@@ -128,9 +136,6 @@ private:
 public:
 	inline static GameManager* Instance;
 	bool GameOver = false;
-	int Score = 0;
-	int Level = 0;
-	int Lines = 0;
 
 	GameManager(const EntityContext& context) : Behavior(context) {
 		Instance = this;
@@ -139,7 +144,28 @@ public:
 		m_theme.SetLoop(true);
 		m_theme.Play();
 
-		TickIntervalSeconds = LevelToTickIntervalSec(Level);
+		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
+	}
+
+	int GetLevel() { return m_level; }
+
+	int GetScore() { return m_score; }
+
+	int GetLines() { return m_lines; }
+
+	void IncrementLevel() {
+		m_level = std::min(m_maxLevel, m_level + 1);
+		m_levelText.ChangeText(std::to_string(m_level));
+	}
+
+	void IncrementScore(int score) {
+		m_score += score;
+		m_scoreText.ChangeText(std::to_string(m_score));
+	}
+
+	void IncrementLines(int lines) {
+		m_lines += lines;
+		m_linesText.ChangeText(std::to_string(m_lines));
 	}
 
 	void FinalizeShape(std::vector<EntityContext>& entities) {
@@ -178,10 +204,6 @@ public:
 		if (GameOver)
 			return;
 
-		if (Keyboard::isKeyPressed(KeyboardKey::keyT)) {
-			m_ScoreText = Text(Vector2{ .x = -7.5}, 1, ColorRgb::white, "0123456789 amglevcorints");
-		}
-
 		if (m_clearPauseTime > 0) {
 			const float numberOfFlashes = 4;
 			for (int i = 0; i < m_height; i++) {
@@ -203,36 +225,28 @@ public:
 			m_tickTime = 0;
 			Tick();
 		}
+	}
 
-#ifdef DEBUG_TEST
-		if (Keyboard::isKeyPressed(KeyboardKey::key1)) {
-			CreateBlock(this, ShapeType::Square);
-		}
-
-		if (Keyboard::isKeyPressed(KeyboardKey::key2)) {
-			CreateBlock(this, ShapeType::Line);
-		}
-
-		if (Keyboard::isKeyPressed(KeyboardKey::key3)) {
-			CreateBlock(this, ShapeType::T);
-		}
-
-		if (Keyboard::isKeyPressed(KeyboardKey::key4)) {
-			CreateBlock(this, ShapeType::J);
-		}
-
-		if (Keyboard::isKeyPressed(KeyboardKey::key5)) {
-			CreateBlock(this, ShapeType::L);
-		}
-
-		if (Keyboard::isKeyPressed(KeyboardKey::key6)) {
-			CreateBlock(this, ShapeType::S);
-		}
-
-		if (Keyboard::isKeyPressed(KeyboardKey::key7)) {
-			CreateBlock(this, ShapeType::Z);
-		}
-#endif
+	void InitText() {
+		m_gameOverText = Text(Vector2{ .x = -11, .y = 0 }, 1, ColorRgb::white, "GAME OVER!");
+		m_gameOverText.Hide();
+		float x = 5.5;
+		float xIndent = 0.5;
+		float y = 8;
+		float headerSpacing = 2;
+		float spacing = 1;
+		//Text(Vector2{ .x = -7.5 }, 1, ColorRgb::white, "0123456789 amglevcorints");
+		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
+		y -= spacing;
+		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		y -= headerSpacing;
+		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Level:");
+		y -= spacing;
+		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		y -= headerSpacing;
+		m_LinesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
+		y -= spacing;
+		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
 	}
 };
 
@@ -268,8 +282,11 @@ private:
 		if (shouldFinalize) {
 			m_gameManager->FinalizeShape(m_entities);
 			// Fastfall bonus score
-			m_gameManager->Score += m_softDroppedBlocks;
-			m_gameManager->Score += m_hardDroppedBlocks * 2;
+			if (m_hardDroppedBlocks > 0) {
+				m_gameManager->IncrementScore(m_hardDroppedBlocks * 2);
+			} else if (m_softDroppedBlocks > 0) {
+				m_gameManager->IncrementScore(m_softDroppedBlocks);
+			}
 			// Self-destruct
 			m_context.destroyEntity();
 			m_destroyed = true;

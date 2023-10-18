@@ -8,7 +8,7 @@ static ttf_t* font = NULL;
 bool InitializeTextLibrary() {
 	// list all system fonts by filename mask:
 
-	ttf_t** list = ttf_list_system_fonts("Cascadia*");
+	ttf_t** list = ttf_list_system_fonts("consola");
 	if (list == NULL) return false; // no memory in system
 	if (list[0] == NULL) return false; // no fonts were found
 
@@ -39,7 +39,7 @@ void AddTextMeshes(std::vector<Mesh>& meshes) {
 		// make mesh object from the glyph
 
 		ttf_mesh_t* out;
-		if (ttf_glyph2mesh(&font->glyphs[index], &out, TTF_QUALITY_HIGH, TTF_FEATURE_IGN_ERR) != TTF_DONE)
+		if (ttf_glyph2mesh(&font->glyphs[index], &out, 128, TTF_FEATURE_IGN_ERR) != TTF_DONE)
 			continue;
 
 		ttf_glyph_t* glyph = &font->glyphs[index];
@@ -95,8 +95,10 @@ void Text::CreateText(Vector2 pos, float scale, ColorRgb color, std::string text
 		if (c < 32 || c > 126) {
 			c = '?';
 		}
-		CreateGlyphEntity(pos, scale, color, c);
-		pos.x += 0.8 * scale;
+		if (c != ' ') {
+			CreateGlyphEntity(pos, scale, color, c);
+		}
+		pos.x += 0.6 * scale;
 	}
 }
 
@@ -106,6 +108,8 @@ void Text::Clear() {
 	}
 	m_entites.clear();
 }
+
+Text::Text(){}
 
 Text::Text(Vector2 pos, float scale, ColorRgb color, std::string text) {
 	m_pos = pos;
@@ -124,64 +128,14 @@ void Text::Move(Vector2 dest) {
 
 }
 
-//class Text {
-//private:
-//	std::vector<EntityContext> m_entites;
-//
-//	EntityContext CreateBlock(Vector2 pos, Vector2 scale, ColorRgb color) {
-//		return CurrentScene::createAndGetEntity(EntityConfig{
-//			.transformConfig = TransformConfig{
-//				.translation = Vector3{
-//					.x = pos.x,
-//					.y = pos.y,
-//					.z = 0
-//				},
-//				.scale = Vector3{
-//					.x = scale.x,
-//					.y = scale.y,
-//					.z = 0
-//				}
-//			},
-//			.appearanceConfig = AppearanceConfig{
-//				.meshIndex = 0,
-//				.color = color
-//			}
-//		});
-//	}
-//
-//
-//	void CreateQuestionMark(Vector2 pos, float scale, ColorRgb color) {
-//		m_entites.push_back(CreateBlock(Vector2{ .x = pos.x - 0.5f, .y = pos.y - 0.25f }, Vector2{ .x = 0.5f, .y = 1.0f }, color));
-//		m_entites.push_back(CreateBlock(Vector2{ .x = pos.x - 0.25f, .y = pos.y - 0.25f }, Vector2{ .x = 1.0f, .y = 0.5f }, color));
-//		m_entites.push_back(CreateBlock(Vector2{ .x = pos.x + 0.5f, .y = pos.y - 0.25f }, Vector2{ .x = 1.0f, .y = 0.5f }, color));
-//	}
-//
-//	void AddChar(Vector2 pos, float scale, ColorRgb color, char c) {
-//		switch (c) {
-//			case '?':
-//			default:
-//				CreateQuestionMark(pos, scale, color);
-//				break;
-//		}
-//	}
-//
-//public:
-//	Text(Vector2 pos, float scale, ColorRgb color, std::string text) {
-//
-//		Vector2 currentPos = pos;
-//		for (char c : text) {
-//			AddChar(currentPos, scale, color, c);
-//			currentPos.x += 10 * scale;
-//		}
-//	}
-//
-//	void ChangeText(std::string text) {
-//
-//	}
-//
-//	void Move(Vector2 dest) {
-//
-//	}
-//
-//
-//};
+void Text::Show() {
+	for (EntityContext& ec : m_entites) {
+		ec.getAppearance().setVisible(true);
+	}
+}
+
+void Text::Hide() {
+	for (EntityContext& ec : m_entites) {
+		ec.getAppearance().setVisible(false);
+	}
+}

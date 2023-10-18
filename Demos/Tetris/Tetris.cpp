@@ -16,9 +16,9 @@ static void updateTitle() {
 				+ " - FPS: " + std::to_string(PerformanceCounters::getFps())
 				+ " - UPS: " + std::to_string(PerformanceCounters::getUps())
 				+ " - Entity count: " + std::to_string(CurrentScene::getEntityCount())
-				+ " - Level: " + std::to_string(GameManager::Instance->Level)
-				+ " - Lines: " + std::to_string(GameManager::Instance->Lines)
-				+ " - Score: " + std::to_string(GameManager::Instance->Score))
+				+ " - Level: " + std::to_string(GameManager::Instance->GetLevel())
+				+ " - Lines: " + std::to_string(GameManager::Instance->GetLines())
+				+ " - Score: " + std::to_string(GameManager::Instance->GetScore()))
 		);
 	}
 	else {
@@ -31,28 +31,31 @@ static void updateTitle() {
 
 void CreateGrid() {
 	float size = 0.05;
-	int limit = 10;
-	for (float i = -limit; i <= limit; i++) {
+	float horizontalLimit = 5;
+	float verticalLimit = 10;
+	for (float i = -horizontalLimit; i <= horizontalLimit; i++) {
 		CurrentScene::createEntity(EntityConfig{
 							.transformConfig = TransformConfig{
 								.translation = Vector3{
 									.x = i,
-									.y = i,
+									.y = 0,
 									.z = 0},
-								.scale = Vector3{.x = 100, .y = size, .z = 1 }
+								.scale = Vector3{.x = size, .y = verticalLimit * 2, .z = 1 }
 							},
 							.appearanceConfig = AppearanceConfig{
 								.meshIndex = 0,
 								.color = ColorRgb::black
 							}
 			});
+	}
+	for (float i = -verticalLimit; i <= verticalLimit; i++) {
 		CurrentScene::createEntity(EntityConfig{
 						.transformConfig = TransformConfig{
 							.translation = Vector3{
-								.x = i,
+								.x = 0,
 								.y = i,
 								.z = 0},
-							.scale = Vector3{.x = size, .y = 100, .z = 1 }
+							.scale = Vector3{.x = verticalLimit, .y = size, .z = 1 }
 						},
 						.appearanceConfig = AppearanceConfig{
 							.meshIndex = 0,
@@ -157,8 +160,9 @@ int main() {
 			.startScript = []() {
 				InitSound();
 				CreateGrid();
-				CreateBorders();
+				//CreateBorders();
 				//CreateCrosshair();
+				GameManager::Instance->InitText();
 				PerformanceCounters::setCountersUpdatedCallback(updateTitle);
 				updateTitle();
 			},
