@@ -6,6 +6,7 @@
 #include "Sound.h"
 #include "Text.h"
 #include <algorithm>
+#include "Menu.h"
 
 using namespace Miracle;
 
@@ -22,6 +23,12 @@ static float LevelToTickIntervalSec(int level) {
 }
 
 float TickIntervalSeconds = 0.5;
+
+enum class GameState {
+	Menu,
+	Playing,
+	GameOver
+};
 
 class GameManager : public Behavior {
 private:
@@ -41,13 +48,14 @@ private:
 	Sound m_tetrisSound = Sound("Tetris.wav");
 	Sound m_gameOverSound = Sound("GameOver.wav");
 	//Sound m_levelUpSound = Sound("LevelUp.wav");
-	Text m_gameOverText;
 	Text m_scoreHeader;
 	Text m_scoreText;
 	Text m_levelHeader;
 	Text m_levelText;
 	Text m_LinesHeader;
 	Text m_linesText;
+	std::optional<Menu> m_mainMenu;
+	std::optional<Menu> m_gameOverMenu;
 
 	void Tick() {
 		int fullRows = 0;
@@ -75,14 +83,14 @@ private:
 			//m_currentShape.emplace(CreateBlock(ShapeType::Line));
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value(), Vector3{})) {
-				GameOver = true;
+				GameState = GameState::GameOver;
 				Logger::info("**** GAME OVER! ****");
 				Logger::info(std::string("\tScore: ") + std::to_string(m_score));
 				Logger::info(std::string("\tLevel: ") + std::to_string(m_level));
 				Logger::info(std::string("\Lines: ") + std::to_string(m_lines));
 				m_theme.Stop();
 				m_gameOverSound.Play();
-				m_gameOverText.Show();
+				m_gameOverMenu.value().Show();
 				return;
 			}
 		}
@@ -133,18 +141,98 @@ private:
 		return xPos + 4.5f;
 	}
 
+	void InitGameHud() {
+		float x = 5.5;
+		float xIndent = 0.5;
+		float y = 8;
+		float headerSpacing = 2;
+		float spacing = 1;
+		//Text(Vector2{ .x = -7.5 }, 1, ColorRgb::white, "0123456789 amglevcorints");
+		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
+		y -= spacing;
+		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		y -= headerSpacing;
+		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Level:");
+		y -= spacing;
+		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		y -= headerSpacing;
+		m_LinesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
+		y -= spacing;
+		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+	}
+
+	void InitMenus() {
+		float x = -12;
+		float y = 8;
+		Menu mainMenu = Menu("Tetris", x, y);
+		mainMenu.AddMenuNode("Play", [this] { StartGame(); });
+		mainMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
+		m_mainMenu.emplace(mainMenu);
+		Menu gameOverMenu = Menu("Game Over!", x - 1, y);
+		gameOverMenu.AddMenuNode("Restart", [this] { ResetGame(); StartGame(); });
+		gameOverMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
+		gameOverMenu.Hide();
+		m_gameOverMenu.emplace(gameOverMenu);
+	}
+
+	void InPlayAct() {
+		if (m_clearPauseTime > 0) {
+			const float numberOfFlashes = 4;
+			for (int i = 0; i < m_height; i++) {
+				m_rows[i].UpdateVisual(m_clearPause / numberOfFlashes);
+			}
+			m_clearPauseTime -= DeltaTime::get();
+			if (m_clearPauseTime <= 0) {
+				int removed = ClearFullRows();
+				// Resume theme if we got tetris
+				if (removed == 4) {
+					m_theme.Play();
+				}
+			}
+			return;
+		}
+
+		m_tickTime += DeltaTime::get();
+		if (m_tickTime >= TickIntervalSeconds) {
+			m_tickTime = 0;
+			Tick();
+		}
+	}
+
 public:
 	inline static GameManager* Instance;
-	bool GameOver = false;
+	GameState GameState = GameState::Menu;
 
 	GameManager(const EntityContext& context) : Behavior(context) {
 		Instance = this;
 		srand(time(0));
 
 		m_theme.SetLoop(true);
-		m_theme.Play();
 
 		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
+	}
+
+	void ResetGame() {
+		m_level = 0;
+		m_lines = 0;
+		m_score = 0;
+		m_levelText.ChangeText(std::to_string(m_level));
+		m_scoreText.ChangeText(std::to_string(m_score));
+		m_linesText.ChangeText(std::to_string(m_lines));
+		for (Row& row : m_rows) {
+			row.Destroy();
+		}
+		if (m_currentShape.has_value()) {
+			m_currentShape.value().destroyEntity();
+			m_currentShape.reset();
+		}
+	}
+
+	void StartGame() {
+		m_gameOverMenu.value().Hide();
+		m_mainMenu.value().Hide();
+		m_theme.Play();
+		GameState = GameState::Playing;
 	}
 
 	int GetLevel() { return m_level; }
@@ -201,52 +289,26 @@ public:
 	}
 
 	virtual void act() override {
-		if (GameOver)
-			return;
-
-		if (m_clearPauseTime > 0) {
-			const float numberOfFlashes = 4;
-			for (int i = 0; i < m_height; i++) {
-				m_rows[i].UpdateVisual(m_clearPause/numberOfFlashes);
-			}
-			m_clearPauseTime -= DeltaTime::get();
-			if (m_clearPauseTime <= 0) {
-				int removed = ClearFullRows();
-				// Resume theme if we got tetris
-				if (removed == 4) {
-					m_theme.Play();
-				}
-			}
-			return;
+		switch (GameState)
+		{
+			case GameState::Menu:
+				if (m_mainMenu.has_value()) m_mainMenu.value().Act();
+				break;
+			case GameState::Playing:
+				InPlayAct();
+				break;
+			case GameState::GameOver:
+				if (m_gameOverMenu.has_value()) m_gameOverMenu.value().Act();
+				break;
+			default:
+				break;
 		}
-
-		m_tickTime += DeltaTime::get();
-		if (m_tickTime >= TickIntervalSeconds) {
-			m_tickTime = 0;
-			Tick();
-		}
+		
 	}
 
 	void InitText() {
-		m_gameOverText = Text(Vector2{ .x = -11, .y = 0 }, 1, ColorRgb::white, "GAME OVER!");
-		m_gameOverText.Hide();
-		float x = 5.5;
-		float xIndent = 0.5;
-		float y = 8;
-		float headerSpacing = 2;
-		float spacing = 1;
-		//Text(Vector2{ .x = -7.5 }, 1, ColorRgb::white, "0123456789 amglevcorints");
-		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
-		y -= spacing;
-		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
-		y -= headerSpacing;
-		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Level:");
-		y -= spacing;
-		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
-		y -= headerSpacing;
-		m_LinesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
-		y -= spacing;
-		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		InitGameHud();
+		InitMenus();
 	}
 };
 
@@ -359,8 +421,15 @@ public:
 		m_entities = std::move(entities);
 	}
 
+	/*~Shape() {
+		for (EntityContext& ec : m_entities) {
+			ec.destroyEntity();
+		}
+		m_entities.clear();
+	}*/
+
 	virtual void act() override {
-		if (m_gameManager->GameOver)
+		if (m_gameManager->GameState != GameState::Playing)
 			return;
 		if (m_destroyed) return;
 

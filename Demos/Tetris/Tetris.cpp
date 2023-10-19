@@ -9,7 +9,7 @@
 using namespace Miracle;
 
 static void updateTitle() {
-	if (!GameManager::Instance->GameOver) {
+	if (GameManager::Instance->GameState != GameState::GameOver) {
 		Window::setTitle(
 			UnicodeConverter::toUtf8(
 				CurrentApp::getName()
@@ -126,6 +126,16 @@ int main() {
 				.faces = std::vector{
 					Face{.indices = { 0, 1, 2 } },
 					Face{.indices = { 0, 2, 3 } }
+			}
+		},
+		{
+			.vertices = std::vector{
+				Vertex{.position = Vector3{.x = -0.5f, .y = -0.5f, .z = 0.0f } },
+				Vertex{.position = Vector3{.x = 0.5f, .y = 0.0f, .z = 0.0f } },
+				Vertex{.position = Vector3{.x = -0.5f, .y = 0.5f, .z = 0.0f } },
+			},
+				.faces = std::vector{
+					Face{.indices = { 0, 1, 2 } }
 			}
 		}
 	};
