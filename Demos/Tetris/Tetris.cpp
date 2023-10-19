@@ -116,7 +116,7 @@ int main() {
 
 	// Add normal rectangles
 	std::vector<Mesh> meshes = std::vector<Mesh>{
-		{
+		{ // Rectangle
 			.vertices = std::vector{
 				Vertex{.position = Vector3{.x = -0.5f, .y = -0.5f, .z = 0.0f } },
 				Vertex{.position = Vector3{.x = 0.5f, .y = -0.5f, .z = 0.0f } },
@@ -128,7 +128,7 @@ int main() {
 					Face{.indices = { 0, 2, 3 } }
 			}
 		},
-		{
+		{ // Triangle
 			.vertices = std::vector{
 				Vertex{.position = Vector3{.x = -0.5f, .y = -0.5f, .z = 0.0f } },
 				Vertex{.position = Vector3{.x = 0.5f, .y = 0.0f, .z = 0.0f } },
