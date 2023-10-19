@@ -10,8 +10,20 @@
 
 using namespace Miracle;
 
+struct ShapeWrapper {
+	EntityContext Shape;
+	std::vector<EntityContext> Children;
+
+	void Destroy() {
+		Shape.destroyEntity();
+		for (EntityContext& ec : Children) {
+			ec.destroyEntity();
+		}
+	}
+};
+
 class GameManager;
-EntityContext CreateBlock(ShapeType);
+ShapeWrapper CreateBlock(ShapeType);
 
 static float LevelToTickIntervalSec(int level) {
 	const float gameboyFps = 59.73;
@@ -39,7 +51,7 @@ private:
 	int m_level = 0;
 	Row m_rows[20];
 	float m_tickTime = 0;
-	std::optional<EntityContext> m_currentShape;
+	std::optional<ShapeWrapper> m_currentShape;
 	const float m_clearPause = 0.8f;
 	float m_clearPauseTime = 0;
 	Sound m_theme = Sound("Theme.wav");
@@ -55,6 +67,7 @@ private:
 	Text m_LinesHeader;
 	Text m_linesText;
 	std::optional<Menu> m_mainMenu;
+	std::optional<Menu> m_levelMenu;
 	std::optional<Menu> m_gameOverMenu;
 
 	void Tick() {
@@ -80,14 +93,13 @@ private:
 
 		if (!m_currentShape.has_value()) {
 			m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 6)));
-			//m_currentShape.emplace(CreateBlock(ShapeType::Line));
 			// Check if spawned block overlaps with any row
-			if (WillOverlap(m_currentShape.value(), Vector3{})) {
+			if (WillOverlap(m_currentShape.value().Children, Vector3{})) {
 				GameState = GameState::GameOver;
 				Logger::info("**** GAME OVER! ****");
 				Logger::info(std::string("\tScore: ") + std::to_string(m_score));
 				Logger::info(std::string("\tLevel: ") + std::to_string(m_level));
-				Logger::info(std::string("\Lines: ") + std::to_string(m_lines));
+				Logger::info(std::string("\tLines: ") + std::to_string(m_lines));
 				m_theme.Stop();
 				m_gameOverSound.Play();
 				m_gameOverMenu.value().Show();
@@ -127,7 +139,6 @@ private:
 		IncrementScore(scoreBase * (m_level + 1));
 		if (m_lines >= (m_level + 1) * 10) {
 			IncrementLevel();
-			TickIntervalSeconds = LevelToTickIntervalSec(m_level);
 			// m_levelUpSound.Play();
 		}
 		return removed;
@@ -164,12 +175,18 @@ private:
 	void InitMenus() {
 		float x = -12;
 		float y = 8;
+		Menu levelMenu = Menu("Level", x, y);
+		for (int i = 0; i < 10; i++) {
+			levelMenu.AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
+		}
+		levelMenu.Hide();
+		m_levelMenu.emplace(levelMenu);
 		Menu mainMenu = Menu("Tetris", x, y);
-		mainMenu.AddMenuNode("Play", [this] { StartGame(); });
+		mainMenu.AddMenuNode("Play", [this] { m_mainMenu.value().Hide(); m_levelMenu.value().Show();  });
 		mainMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
 		m_mainMenu.emplace(mainMenu);
 		Menu gameOverMenu = Menu("Game Over!", x - 1, y);
-		gameOverMenu.AddMenuNode("Restart", [this] { ResetGame(); StartGame(); });
+		gameOverMenu.AddMenuNode("Restart", [this] { ResetGame(); });
 		gameOverMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
 		gameOverMenu.Hide();
 		m_gameOverMenu.emplace(gameOverMenu);
@@ -208,29 +225,30 @@ public:
 		srand(time(0));
 
 		m_theme.SetLoop(true);
-
-		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
 	}
 
 	void ResetGame() {
-		m_level = 0;
+		SetLevel(0);
 		m_lines = 0;
 		m_score = 0;
-		m_levelText.ChangeText(std::to_string(m_level));
 		m_scoreText.ChangeText(std::to_string(m_score));
 		m_linesText.ChangeText(std::to_string(m_lines));
 		for (Row& row : m_rows) {
 			row.Destroy();
 		}
 		if (m_currentShape.has_value()) {
-			m_currentShape.value().destroyEntity();
+			m_currentShape.value().Destroy();
 			m_currentShape.reset();
 		}
+		GameState = GameState::Menu;
+		m_gameOverMenu.value().Hide();
+		m_levelMenu.value().Show();
 	}
 
 	void StartGame() {
 		m_gameOverMenu.value().Hide();
 		m_mainMenu.value().Hide();
+		m_levelMenu.value().Hide();
 		m_theme.Play();
 		GameState = GameState::Playing;
 	}
@@ -241,9 +259,16 @@ public:
 
 	int GetLines() { return m_lines; }
 
+	void SetLevel(int level) {
+		m_level = level;
+		m_levelText.ChangeText(std::to_string(m_level));
+		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
+	}
+
 	void IncrementLevel() {
 		m_level = std::min(m_maxLevel, m_level + 1);
 		m_levelText.ChangeText(std::to_string(m_level));
+		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
 	}
 
 	void IncrementScore(int score) {
@@ -292,6 +317,7 @@ public:
 		switch (GameState)
 		{
 			case GameState::Menu:
+				if (m_levelMenu.has_value()) m_levelMenu.value().Act();
 				if (m_mainMenu.has_value()) m_mainMenu.value().Act();
 				break;
 			case GameState::Playing:
@@ -322,6 +348,7 @@ private:
 	float m_bottomBarrier = -9.5;
 	int m_softDroppedBlocks = 0;
 	int m_hardDroppedBlocks = 0;
+	ShapeType m_type;
 
 	void Fall() {
 		if (m_destroyed) return;
@@ -343,6 +370,7 @@ private:
 
 		if (shouldFinalize) {
 			m_gameManager->FinalizeShape(m_entities);
+			m_entities.clear();
 			// Fastfall bonus score
 			if (m_hardDroppedBlocks > 0) {
 				m_gameManager->IncrementScore(m_hardDroppedBlocks * 2);
@@ -416,17 +444,11 @@ private:
 	}
 
 public:
-	Shape(const EntityContext& context, std::vector<EntityContext> entities) : Behavior(context) {
+	Shape(const EntityContext& context, ShapeType type, std::vector<EntityContext> entities) : Behavior(context) {
 		m_gameManager = GameManager::Instance;
+		m_type = type;
 		m_entities = std::move(entities);
 	}
-
-	/*~Shape() {
-		for (EntityContext& ec : m_entities) {
-			ec.destroyEntity();
-		}
-		m_entities.clear();
-	}*/
 
 	virtual void act() override {
 		if (m_gameManager->GameState != GameState::Playing)
@@ -492,7 +514,7 @@ public:
 	}
 };
 
-EntityContext CreateBlock(ShapeType type) {
+ShapeWrapper CreateBlock(ShapeType type) {
 	Vector2 startPos = Vector2{ .x = 0, .y = 9 };
 	std::vector<EntityContext> entities;
 	switch (type) {
@@ -522,7 +544,7 @@ EntityContext CreateBlock(ShapeType type) {
 		default:
 			std::exit(-1);
 	}
-	return CurrentScene::createAndGetEntity(EntityConfig{
+	EntityContext shape = CurrentScene::createAndGetEntity(EntityConfig{
 		.transformConfig = TransformConfig{
 			.translation = Vector3::createFromVector2(startPos, 0),
 		},
@@ -530,6 +552,7 @@ EntityContext CreateBlock(ShapeType type) {
 			.meshIndex = 0,
 			.color = ColorRgb::red
 		},*/
-		.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(entities)
+		.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(type, entities)
 		});
+	return ShapeWrapper{ .Shape = shape, .Children = entities };
 }

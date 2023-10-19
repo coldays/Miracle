@@ -33,6 +33,9 @@ public:
 	}
 
 	void AddEntity(int index, EntityContext& entity) {
+		if (m_entities[index].has_value()) {
+			Logger::error("Entity placed in row twice");
+		}
 		m_entities[index].emplace(entity);
 	}
 

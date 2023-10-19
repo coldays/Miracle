@@ -17,12 +17,13 @@ public:
 class Menu {
 private:
 	std::vector<MenuNode> m_menuNodes;
-	int m_selectedIndex;
+	int m_selectedIndex = 0;
 	EntityContext m_selectorIndicator;
 	const float m_indicatorOffsetY = 0.25;
 	const float m_headerSpacing = 1.5;
 	const float m_entrySpacing = 1;
 	const float m_entryIndent = 1;
+	bool m_isHidden = false;
 	float m_initialX;
 	float m_initialY;
 	float m_currentX;
@@ -78,6 +79,8 @@ public:
 	}
 
 	void Act() {
+		if (m_isHidden)
+			return;
 		if (Keyboard::isKeyPressed(KeyboardKey::keyEnter)) {
 			m_menuNodes[m_selectedIndex].Action();
 			return;
@@ -91,6 +94,7 @@ public:
 	}
 
 	void Show() {
+		m_isHidden = false;
 		for (MenuNode& node : m_menuNodes) {
 			node.NodeText.Show();
 		}
@@ -99,6 +103,7 @@ public:
 	}
 
 	void Hide() {
+		m_isHidden = true;
 		for (MenuNode& node : m_menuNodes) {
 			node.NodeText.Hide();
 		}
