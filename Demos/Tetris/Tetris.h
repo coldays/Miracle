@@ -78,7 +78,7 @@ private:
 	std::optional<Menu> m_gameOverMenu;
 	std::optional<Menu> m_currentMenu;
 
-	void SwapMenu(std::optional<Menu> menu) {
+	void SetCurrentMenu(std::optional<Menu> menu) {
 		if (!menu.has_value()) return;
 		if (m_currentMenu.has_value())
 			m_currentMenu.value().Hide();
@@ -120,7 +120,7 @@ private:
 				Logger::info(std::string("\tLines: ") + std::to_string(m_lines));
 				m_theme.Stop();
 				m_gameOverSound.Play();
-				m_gameOverMenu.value().Show();
+				SetCurrentMenu(m_gameOverMenu);
 				return;
 			}
 		}
@@ -197,19 +197,18 @@ private:
 		for (int i = 0; i < 10; i++) {
 			levelMenu.AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
 		}
-		levelMenu.Hide();
 		m_levelMenu.emplace(levelMenu);
 		Menu mainMenu = Menu("Tetris", x, y);
-		mainMenu.AddMenuNode("Play", [this] { SwapMenu(m_levelMenu);  });
+		mainMenu.AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
 		mainMenu.AddMenuNode("Options", [] {  });
 		mainMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
 		m_mainMenu.emplace(mainMenu);
 		Menu gameOverMenu = Menu("Game Over!", x - 1, y);
 		gameOverMenu.AddMenuNode("Restart", [this] { ResetGame(); });
 		gameOverMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
-		gameOverMenu.Hide();
 		m_gameOverMenu.emplace(gameOverMenu);
-		m_currentMenu.emplace(mainMenu);
+
+		SetCurrentMenu(m_mainMenu);
 	}
 
 	void InPlayAct() {
@@ -261,14 +260,12 @@ public:
 			m_currentShape.reset();
 		}
 		GameState = GameState::Menu;
-		m_gameOverMenu.value().Hide();
-		m_levelMenu.value().Show();
+		SetCurrentMenu(m_levelMenu);
 	}
 
 	void StartGame() {
-		m_gameOverMenu.value().Hide();
-		m_mainMenu.value().Hide();
-		m_levelMenu.value().Hide();
+		if (m_currentMenu.has_value())
+			m_currentMenu.value().Hide();
 		m_theme.Play();
 		GameState = GameState::Playing;
 	}

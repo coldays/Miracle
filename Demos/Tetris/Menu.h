@@ -23,7 +23,7 @@ private:
 	const float m_headerSpacing = 1.5;
 	const float m_entrySpacing = 1;
 	const float m_entryIndent = 1;
-	bool m_isHidden = false;
+	bool m_isHidden = true;
 	float m_initialX;
 	float m_initialY;
 	float m_currentX;
@@ -41,8 +41,9 @@ private:
 				.scale = Vector3 {.x = 0.25, .y = 0.25 }
 			},
 			.appearanceConfig = AppearanceConfig{
+				.visible = false,
 				.meshIndex = 1,
-				.color = ColorRgb::red
+				.color = ColorRgb::red,
 			}
 		});
 	}
@@ -60,6 +61,7 @@ public:
 		m_selectorIndicator(InitSelector(x, y)),
 		m_header(Vector2{ .x = x, .y = y}, 1.2, ColorRgb::white, header)
 	{
+		m_header.Hide();
 		m_initialX = x;
 		m_initialY = y;
 		m_currentY = y - m_headerSpacing;
@@ -75,6 +77,9 @@ public:
 			.X = x,
 			.Y = y,
 			});
+		if (m_isHidden) {
+			m_menuNodes[m_menuNodes.size() - 1].NodeText.Hide();
+		}
 		m_currentY -= m_entrySpacing;
 	}
 
