@@ -25,9 +25,16 @@ struct ShapeWrapper {
 class GameManager;
 ShapeWrapper CreateBlock(ShapeType);
 
-KeyboardKey MoveLeftKey = KeyboardKey::keyA;
-KeyboardKey MoveRightKey = KeyboardKey::keyD;
-KeyboardKey RotateLeftKey = KeyboardKey::keyS;
+//KeyboardKey MoveLeftKey = KeyboardKey::keyA;
+//KeyboardKey MoveRightKey = KeyboardKey::keyD;
+//KeyboardKey RotateLeftKey = KeyboardKey::keyS;
+//KeyboardKey RotateRightKey = KeyboardKey::keyW;
+//KeyboardKey HardDropKey = KeyboardKey::keySpace;
+//KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+
+KeyboardKey MoveLeftKey = KeyboardKey::keyLeft;
+KeyboardKey MoveRightKey = KeyboardKey::keyRight;
+KeyboardKey RotateLeftKey = KeyboardKey::keyUp;
 KeyboardKey RotateRightKey = KeyboardKey::keyW;
 KeyboardKey HardDropKey = KeyboardKey::keySpace;
 KeyboardKey SoftDropKey = KeyboardKey::keyDown;
@@ -73,17 +80,34 @@ private:
 	Text m_levelText;
 	Text m_LinesHeader;
 	Text m_linesText;
-	std::optional<Menu> m_mainMenu;
-	std::optional<Menu> m_levelMenu;
-	std::optional<Menu> m_gameOverMenu;
-	std::optional<Menu> m_currentMenu;
+	std::unique_ptr<Menu> m_mainMenu;
+	std::unique_ptr<Menu> m_levelMenu;
+	std::unique_ptr<Menu> m_gameOverMenu;
+	Menu* m_currentMenu = nullptr;
 
-	void SetCurrentMenu(std::optional<Menu> menu) {
-		if (!menu.has_value()) return;
-		if (m_currentMenu.has_value())
-			m_currentMenu.value().Hide();
-		menu.value().Show();
-		m_currentMenu.emplace(menu.value());
+	void SetCurrentMenu(std::unique_ptr<Menu>& menu) {
+		if (m_currentMenu)
+			m_currentMenu->Hide();
+		m_currentMenu = menu.get();
+		m_currentMenu->Show();
+	}
+
+	void InitMenus() {
+		float x = -12;
+		float y = 8;
+		m_levelMenu = std::make_unique<Menu>("Level", x, y);
+		for (int i = 0; i < 10; i++) {
+			m_levelMenu->AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
+		}
+		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
+		m_mainMenu->AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
+		m_mainMenu->AddMenuNode("Options", [] {});
+		m_mainMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+		m_gameOverMenu = std::make_unique<Menu>("Game Over!", x - 1, y);
+		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
+		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+
+		SetCurrentMenu(m_mainMenu);
 	}
 
 
@@ -190,27 +214,6 @@ private:
 		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
 	}
 
-	void InitMenus() {
-		float x = -12;
-		float y = 8;
-		Menu levelMenu = Menu("Level", x, y);
-		for (int i = 0; i < 10; i++) {
-			levelMenu.AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
-		}
-		m_levelMenu.emplace(levelMenu);
-		Menu mainMenu = Menu("Tetris", x, y);
-		mainMenu.AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
-		mainMenu.AddMenuNode("Options", [] {  });
-		mainMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
-		m_mainMenu.emplace(mainMenu);
-		Menu gameOverMenu = Menu("Game Over!", x - 1, y);
-		gameOverMenu.AddMenuNode("Restart", [this] { ResetGame(); });
-		gameOverMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
-		m_gameOverMenu.emplace(gameOverMenu);
-
-		SetCurrentMenu(m_mainMenu);
-	}
-
 	void InPlayAct() {
 		if (m_clearPauseTime > 0) {
 			const float numberOfFlashes = 4;
@@ -264,8 +267,8 @@ public:
 	}
 
 	void StartGame() {
-		if (m_currentMenu.has_value())
-			m_currentMenu.value().Hide();
+		if (m_currentMenu)
+			m_currentMenu->Hide();
 		m_theme.Play();
 		GameState = GameState::Playing;
 	}
@@ -334,13 +337,13 @@ public:
 		switch (GameState)
 		{
 			case GameState::Menu:
-				if (m_currentMenu.has_value()) m_currentMenu.value().Act();
+				if (m_currentMenu) m_currentMenu->Act();
 				break;
 			case GameState::Playing:
 				InPlayAct();
 				break;
 			case GameState::GameOver:
-				if (m_gameOverMenu.has_value()) m_gameOverMenu.value().Act();
+				m_gameOverMenu->Act();
 				break;
 			default:
 				break;
