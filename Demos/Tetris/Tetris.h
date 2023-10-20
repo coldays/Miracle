@@ -25,6 +25,13 @@ struct ShapeWrapper {
 class GameManager;
 ShapeWrapper CreateBlock(ShapeType);
 
+KeyboardKey MoveLeftKey = KeyboardKey::keyA;
+KeyboardKey MoveRightKey = KeyboardKey::keyD;
+KeyboardKey RotateLeftKey = KeyboardKey::keyS;
+KeyboardKey RotateRightKey = KeyboardKey::keyW;
+KeyboardKey HardDropKey = KeyboardKey::keySpace;
+KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+
 static float LevelToTickIntervalSec(int level) {
 	const float gameboyFps = 59.73;
 	const float baseFrames = 53;
@@ -69,6 +76,16 @@ private:
 	std::optional<Menu> m_mainMenu;
 	std::optional<Menu> m_levelMenu;
 	std::optional<Menu> m_gameOverMenu;
+	std::optional<Menu> m_currentMenu;
+
+	void SwapMenu(std::optional<Menu> menu) {
+		if (!menu.has_value()) return;
+		if (m_currentMenu.has_value())
+			m_currentMenu.value().Hide();
+		menu.value().Show();
+		m_currentMenu.emplace(menu.value());
+	}
+
 
 	void Tick() {
 		int fullRows = 0;
@@ -92,7 +109,8 @@ private:
 		}
 
 		if (!m_currentShape.has_value()) {
-			m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 6)));
+			m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 7)));
+			//m_currentShape.emplace(CreateBlock(ShapeType::Z));
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value().Children, Vector3{})) {
 				GameState = GameState::GameOver;
@@ -182,7 +200,8 @@ private:
 		levelMenu.Hide();
 		m_levelMenu.emplace(levelMenu);
 		Menu mainMenu = Menu("Tetris", x, y);
-		mainMenu.AddMenuNode("Play", [this] { m_mainMenu.value().Hide(); m_levelMenu.value().Show();  });
+		mainMenu.AddMenuNode("Play", [this] { SwapMenu(m_levelMenu);  });
+		mainMenu.AddMenuNode("Options", [] {  });
 		mainMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
 		m_mainMenu.emplace(mainMenu);
 		Menu gameOverMenu = Menu("Game Over!", x - 1, y);
@@ -190,6 +209,7 @@ private:
 		gameOverMenu.AddMenuNode("Exit", [] { CurrentApp::close(); });
 		gameOverMenu.Hide();
 		m_gameOverMenu.emplace(gameOverMenu);
+		m_currentMenu.emplace(mainMenu);
 	}
 
 	void InPlayAct() {
@@ -317,8 +337,7 @@ public:
 		switch (GameState)
 		{
 			case GameState::Menu:
-				if (m_levelMenu.has_value()) m_levelMenu.value().Act();
-				if (m_mainMenu.has_value()) m_mainMenu.value().Act();
+				if (m_currentMenu.has_value()) m_currentMenu.value().Act();
 				break;
 			case GameState::Playing:
 				InPlayAct();
@@ -455,18 +474,18 @@ public:
 			return;
 		if (m_destroyed) return;
 
-		if (Keyboard::isKeyPressed(KeyboardKey::keySpace)) {
+		if (Keyboard::isKeyPressed(HardDropKey)) {
 			FallToEnd();
 			return;
 		}
 
-		float move = Keyboard::isKeyPressedOrRepeated(KeyboardKey::keyD) - Keyboard::isKeyPressedOrRepeated(KeyboardKey::keyA);
+		float move = Keyboard::isKeyPressedOrRepeated(MoveRightKey) - Keyboard::isKeyPressedOrRepeated(MoveLeftKey);
 
-		int rotate = Keyboard::isKeyPressed(KeyboardKey::keyW) - Keyboard::isKeyPressed(KeyboardKey::keyS);
+		int rotate = Keyboard::isKeyPressed(RotateRightKey) - Keyboard::isKeyPressed(RotateLeftKey);
 
-		// Fall faster if arrow down is held
+		// Softdrop: Fall faster if arrow down is held
 		float tickrate = TickIntervalSeconds;
-		if (Keyboard::isKeyHeld(KeyboardKey::keyDown)) {
+		if (Keyboard::isKeyHeld(SoftDropKey)) {
 			tickrate = fminf(tickrate, 0.05);
 		} else {
 			m_softDroppedBlocks = 0;

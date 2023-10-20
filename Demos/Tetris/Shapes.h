@@ -18,7 +18,7 @@ Vector3 shapeScale = Vector3{ .x = 0.9, .y = 0.9, .z = 0.9 };
 
 ColorRgb purple = ColorRgb::createFromColorCode(0xaa00ff);
 ColorRgb orange = ColorRgb::createFromColorCode(0xFF7F27);
-ColorRgb brown = ColorRgb::createFromColorCode(0xB97A57);
+ColorRgb brown = ColorRgb::createFromColorCode(0x00ffdd);
 
 std::vector<EntityContext> CreateLine(Vector2& startPos) {
 	float startX = -2.5 + startPos.x;
