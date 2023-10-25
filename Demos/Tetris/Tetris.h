@@ -328,6 +328,10 @@ private:
 		m_optionsMenu->AddMenuNode("Key config", [this] { SetCurrentMenu(m_keyConfMenu); });
 		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", m_gameBoard->ShowGridLines, [this] { ToggleGrid(); });
 		m_optionsMenu->AddToggleMenuNode("Screen shake", "On", "Off", m_screenShakeEnabled, [this] { m_screenShakeEnabled = !m_screenShakeEnabled; });
+		// Todo:
+		m_optionsMenu->AddToggleMenuNode("Hold", "On", "Off", false, [this] { });
+		m_optionsMenu->AddToggleMenuNode("Ghost", "On", "Off", false, [this] {  });
+		m_optionsMenu->AddToggleMenuNode("Preview", "On", "Off", false, [this] {  });
 		
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
 		m_mainMenu->AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
@@ -665,7 +669,6 @@ public:
 			default:
 				break;
 		}
-		
 	}
 
 	void InitText() {
