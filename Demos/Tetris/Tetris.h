@@ -11,7 +11,8 @@
 
 using namespace Miracle;
 
-struct ShapeWrapper {
+class ShapeWrapper {
+public:
 	EntityContext Shape;
 	std::vector<EntityContext> Children;
 
@@ -23,14 +24,12 @@ struct ShapeWrapper {
 	}
 
 	void Show() {
-		Shape.getAppearance().setVisible(true);
 		for (EntityContext& ec : Children) {
 			ec.getAppearance().setVisible(true);
 		}
 	}
 
 	void Hide() {
-		Shape.getAppearance().setVisible(false);
 		for (EntityContext& ec : Children) {
 			ec.getAppearance().setVisible(false);
 		}
@@ -280,6 +279,8 @@ private:
 	float m_screenShakeTime = 0;
 	float m_screenShakeStrength = 0;
 	const float m_screenShakeDurationSec = 0.2f;
+	float m_pauseCoolDown = 0;
+	const float m_pauseCoolDownTime = 5.0f;
 	Sound m_theme = Sound("Theme.wav");
 	Sound m_rowCompleteSound = Sound("Row.wav");
 	Sound m_tetrisSound = Sound("Tetris.wav");
@@ -332,7 +333,7 @@ private:
 		m_mainMenu->AddMenuNode("Options", [this] { SetCurrentMenu(m_optionsMenu); });
 		m_mainMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
 		
-		m_gameOverMenu = std::make_unique<Menu>("Game Over!", -12, y);
+		m_gameOverMenu = std::make_unique<Menu>("Game Over!", -12.0f, y);
 		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
 		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
 
@@ -435,6 +436,7 @@ private:
 	void TogglePause() {
 		switch (GameState) {
 			case GameState::Playing:
+				if (m_pauseCoolDown > 0) return;
 				// Hide all blocks
 				for (Row& row : m_rows) {
 					row.Hide();
@@ -444,7 +446,7 @@ private:
 				}
 				m_gameBoard->Hide();
 				GameState = GameState::Paused;
-				break;
+				return;
 			case GameState::Paused:
 				// Show all blocks
 				for (Row& row : m_rows) {
@@ -455,7 +457,8 @@ private:
 				}
 				m_gameBoard->Show();
 				GameState = GameState::Playing;
-				break;
+				m_pauseCoolDown = m_pauseCoolDownTime;
+				return;
 			default:
 				return;
 		}
@@ -486,6 +489,9 @@ private:
 	}
 
 	void InPlayAct() {
+		if (m_pauseCoolDown > 0) {
+			m_pauseCoolDown -= DeltaTime::get();
+		}
 		if (Keyboard::isKeyPressed(KeyboardKey::keyEscape)) {
 			TogglePause();
 			return;
