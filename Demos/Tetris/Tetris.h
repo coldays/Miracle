@@ -293,6 +293,7 @@ private:
 	std::unique_ptr<Menu> m_optionsMenu;
 	std::unique_ptr<Menu> m_keyConfMenu;
 	std::unique_ptr<Menu> m_gameOverMenu;
+	std::unique_ptr<Menu> m_pauseMenu;
 	Menu* m_currentMenu = nullptr;
 	std::unique_ptr<Hud> m_hud;
 	std::unique_ptr<GameBoard> m_gameBoard;
@@ -336,6 +337,11 @@ private:
 		m_gameOverMenu = std::make_unique<Menu>("Game Over!", -12.0f, y);
 		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
 		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+
+		m_pauseMenu = std::make_unique<Menu>("Pause", x, y);
+		m_pauseMenu->AddMenuNode("Resume", [this] { TogglePause(); });
+		m_pauseMenu->AddMenuNode("Main Menu", [this] { ResetGame(); });
+		m_pauseMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
 
 		SetCurrentMenu(m_mainMenu);
 	}
@@ -446,6 +452,7 @@ private:
 				}
 				m_gameBoard->Hide();
 				GameState = GameState::Paused;
+				SetCurrentMenu(m_pauseMenu);
 				return;
 			case GameState::Paused:
 				// Show all blocks
@@ -456,6 +463,7 @@ private:
 					m_currentShape.value().Show();
 				}
 				m_gameBoard->Show();
+				m_pauseMenu->Hide();
 				GameState = GameState::Playing;
 				m_pauseCoolDown = m_pauseCoolDownTime;
 				return;
@@ -652,9 +660,7 @@ public:
 				m_gameOverMenu->Act();
 				break;
 			case GameState::Paused:
-				if (Keyboard::isKeyPressed(KeyboardKey::keyEscape)) {
-					TogglePause();
-				}
+				m_pauseMenu->Act();
 				break;
 			default:
 				break;
