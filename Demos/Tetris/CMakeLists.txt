@@ -40,6 +40,11 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/HardDrop.wav
                 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/HardDrop.wav)
+add_custom_command(
+        TARGET Tetris POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/LevelUp.wav
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LevelUp.wav)
 
 # Linking
 target_link_libraries(Tetris

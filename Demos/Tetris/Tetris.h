@@ -37,10 +37,144 @@ struct ShapeWrapper {
 	}
 };
 
+class Hud {
+	Text m_scoreHeader;
+	Text m_scoreText;
+	Text m_levelHeader;
+	Text m_levelText;
+	Text m_LinesHeader;
+	Text m_linesText;
+public:
+	Hud(float x, float y) {
+		const float xIndent = 0.5;
+		const float headerSpacing = 2;
+		const float spacing = 1;
+		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
+		m_scoreHeader.Hide();
+		y -= spacing;
+		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_scoreText.Hide();
+		y -= headerSpacing;
+		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Level:");
+		m_levelHeader.Hide();
+		y -= spacing;
+		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_levelText.Hide();
+		y -= headerSpacing;
+		m_LinesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
+		m_LinesHeader.Hide();
+		y -= spacing;
+		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_linesText.Hide();
+	}
+
+	void UpdateScore(int value) {
+		m_scoreText.ChangeText(std::to_string(value));
+	}
+
+	void UpdateLevel(int value) {
+		m_levelText.ChangeText(std::to_string(value));
+	}
+
+	void UpdateLines(int value) {
+		m_linesText.ChangeText(std::to_string(value));
+	}
+
+	void Show() {
+		m_scoreHeader.Show();
+		m_scoreText.Show();
+		m_levelHeader.Show();
+		m_levelText.Show();
+		m_LinesHeader.Show();
+		m_linesText.Show();
+	}
+
+	void Hide() {
+		m_scoreHeader.Hide();
+		m_scoreText.Hide();
+		m_levelHeader.Hide();
+		m_levelText.Hide();
+		m_LinesHeader.Hide();
+		m_linesText.Hide();
+	}
+};
+
+struct GameBoard {
+private:
+	std::vector<EntityContext> m_children;
+
+	void RefreshGridLines() {
+		for (int i = 1; i < m_children.size() - 1; i++) {
+			if (i == 10) continue;
+			if (i == 11) continue;
+			m_children[i].getAppearance().setVisible(ShowGridLines);
+		}
+	}
+
+public:
+	bool ShowGridLines = true;
+
+	GameBoard() {
+		float size = 0.05;
+		float horizontalLimit = 5;
+		float verticalLimit = 10;
+		for (float i = -horizontalLimit; i <= horizontalLimit; i++) {
+			m_children.push_back(CurrentScene::createAndGetEntity(EntityConfig{
+								.transformConfig = TransformConfig{
+									.translation = Vector3{
+										.x = i,
+										.y = 0,
+										.z = zIndexMap
+									},
+									.scale = Vector3{.x = size, .y = verticalLimit * 2, .z = 1 }
+								},
+								.appearanceConfig = AppearanceConfig{
+									.visible = false,
+									.meshIndex = 0,
+									.color = ColorRgb::black,
+								}
+				}));
+		}
+		for (float i = -verticalLimit; i <= verticalLimit; i++) {
+			m_children.push_back(CurrentScene::createAndGetEntity(EntityConfig{
+							.transformConfig = TransformConfig{
+								.translation = Vector3{
+									.x = 0,
+									.y = i,
+									.z = zIndexMap
+								},
+								.scale = Vector3{.x = verticalLimit, .y = size, .z = 1 }
+							},
+							.appearanceConfig = AppearanceConfig{
+								.visible = false,
+								.meshIndex = 0,
+								.color = ColorRgb::black
+							}
+				}));
+		}
+	}
+
+	void ToggleGridLines() {
+		ShowGridLines = !ShowGridLines;
+		RefreshGridLines();
+	}
+
+	void Show() {
+		for (EntityContext& ec : m_children) {
+			ec.getAppearance().setVisible(true);
+		}
+		RefreshGridLines();
+	}
+
+	void Hide() {
+		for (EntityContext& ec : m_children) {
+			ec.getAppearance().setVisible(false);
+		}
+	}
+};
+
 class GameManager;
 ShapeWrapper CreateBlock(ShapeType);
-
-std::vector<EntityContext> Grid;
 
 struct KeyboardConfig {
 	KeyboardKey MoveLeftKey = KeyboardKey::keyA;
@@ -142,7 +276,6 @@ private:
 	std::optional<ShapeWrapper> m_currentShape;
 	const float m_clearPause = 0.8f;
 	float m_clearPauseTime = 0;
-	bool m_showGrid = true;
 	bool m_screenShakeEnabled = false;
 	float m_screenShakeTime = 0;
 	float m_screenShakeStrength = 0;
@@ -151,21 +284,17 @@ private:
 	Sound m_rowCompleteSound = Sound("Row.wav");
 	Sound m_tetrisSound = Sound("Tetris.wav");
 	Sound m_gameOverSound = Sound("GameOver.wav");
-	//Sound m_levelUpSound = Sound("LevelUp.wav");
+	Sound m_levelUpSound = Sound("LevelUp.wav");
 	Sound m_clickSound = Sound("Click.wav");
 	Sound m_hardDropSound = Sound("HardDrop.wav");
-	Text m_scoreHeader;
-	Text m_scoreText;
-	Text m_levelHeader;
-	Text m_levelText;
-	Text m_LinesHeader;
-	Text m_linesText;
 	std::unique_ptr<Menu> m_mainMenu;
 	std::unique_ptr<Menu> m_levelMenu;
 	std::unique_ptr<Menu> m_optionsMenu;
 	std::unique_ptr<Menu> m_keyConfMenu;
 	std::unique_ptr<Menu> m_gameOverMenu;
 	Menu* m_currentMenu = nullptr;
+	std::unique_ptr<Hud> m_hud;
+	std::unique_ptr<GameBoard> m_gameBoard;
 
 	void SetCurrentMenu(std::unique_ptr<Menu>& menu) {
 		if (m_currentMenu)
@@ -175,21 +304,10 @@ private:
 	}
 
 	void InitMenus() {
-		float x = -12;
+		float x = -5;
 		float y = 8;
 
 		m_levelMenu = std::make_unique<Menu>("Level", x, y);
-		m_levelMenu->AddMenuNode("Config: Andreas", [this] {
-			if (isAndreasConfig) {
-				SwapKeyConfig(CristinaConfig);
-				m_levelMenu->UpdateNodeText(0, "Config: Cristina");
-			}
-			else {
-				SwapKeyConfig(AndreasConfig);
-				m_levelMenu->UpdateNodeText(0, "Config: Andreas");
-			}
-			isAndreasConfig = !isAndreasConfig;
-		});
 		for (int i = 0; i < 10; i++) {
 			m_levelMenu->AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
 		}
@@ -206,7 +324,7 @@ private:
 		m_optionsMenu = std::make_unique<Menu>("Options", x, y);
 		m_optionsMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_mainMenu); });
 		m_optionsMenu->AddMenuNode("Key config", [this] { SetCurrentMenu(m_keyConfMenu); });
-		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", m_showGrid, [this] { ToggleGrid(); });
+		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", m_gameBoard->ShowGridLines, [this] { ToggleGrid(); });
 		m_optionsMenu->AddToggleMenuNode("Screen shake", "On", "Off", m_screenShakeEnabled, [this] { m_screenShakeEnabled = !m_screenShakeEnabled; });
 		
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
@@ -214,7 +332,7 @@ private:
 		m_mainMenu->AddMenuNode("Options", [this] { SetCurrentMenu(m_optionsMenu); });
 		m_mainMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
 		
-		m_gameOverMenu = std::make_unique<Menu>("Game Over!", x - 1, y);
+		m_gameOverMenu = std::make_unique<Menu>("Game Over!", -12, y);
 		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
 		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
 
@@ -222,13 +340,7 @@ private:
 	}
 
 	void ToggleGrid() {
-		bool show = !m_showGrid;
-		for (int i = 1; i < Grid.size() - 1; i++) {
-			if (i == 10) continue;
-			if (i == 11) continue;
-			Grid[i].getAppearance().setVisible(show);
-		}
-		m_showGrid = show;
+		m_gameBoard->ShowGridLines = !m_gameBoard->ShowGridLines;
 	}
 
 	void Tick() {
@@ -301,7 +413,7 @@ private:
 		IncrementScore(scoreBase * (m_level + 1));
 		if (m_lines >= (m_level + 1) * 10) {
 			IncrementLevel();
-			// m_levelUpSound.Play();
+			m_levelUpSound.Play();
 		}
 		return removed;
 	}
@@ -316,22 +428,8 @@ private:
 
 	void InitGameHud() {
 		float x = 5.5;
-		float xIndent = 0.5;
 		float y = 8;
-		float headerSpacing = 2;
-		float spacing = 1;
-		//Text(Vector2{ .x = -7.5 }, 1, ColorRgb::white, "0123456789 amglevcorints");
-		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
-		y -= spacing;
-		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
-		y -= headerSpacing;
-		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Level:");
-		y -= spacing;
-		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
-		y -= headerSpacing;
-		m_LinesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
-		y -= spacing;
-		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_hud = std::make_unique<Hud>(x, y);
 	}
 
 	void TogglePause() {
@@ -344,6 +442,7 @@ private:
 				if (m_currentShape.has_value()) {
 					m_currentShape.value().Hide();
 				}
+				m_gameBoard->Hide();
 				GameState = GameState::Paused;
 				break;
 			case GameState::Paused:
@@ -354,6 +453,7 @@ private:
 				if (m_currentShape.has_value()) {
 					m_currentShape.value().Show();
 				}
+				m_gameBoard->Show();
 				GameState = GameState::Playing;
 				break;
 			default:
@@ -431,8 +531,8 @@ public:
 		SetLevel(0);
 		m_lines = 0;
 		m_score = 0;
-		m_scoreText.ChangeText(std::to_string(m_score));
-		m_linesText.ChangeText(std::to_string(m_lines));
+		m_hud->UpdateScore(m_score);
+		m_hud->UpdateLines(m_lines);
 		for (Row& row : m_rows) {
 			row.Destroy();
 		}
@@ -440,13 +540,17 @@ public:
 			m_currentShape.value().Destroy();
 			m_currentShape.reset();
 		}
+		m_gameBoard->Hide();
+		m_hud->Hide();
 		GameState = GameState::Menu;
-		SetCurrentMenu(m_levelMenu);
+		SetCurrentMenu(m_mainMenu);
 	}
 
 	void StartGame() {
 		if (m_currentMenu)
 			m_currentMenu->Hide();
+		m_hud->Show();
+		m_gameBoard->Show();
 		m_theme.Play();
 		GameState = GameState::Playing;
 	}
@@ -459,24 +563,24 @@ public:
 
 	void SetLevel(int level) {
 		m_level = level;
-		m_levelText.ChangeText(std::to_string(m_level));
+		m_hud->UpdateLevel(m_level);
 		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
 	}
 
 	void IncrementLevel() {
 		m_level = std::min(m_maxLevel, m_level + 1);
-		m_levelText.ChangeText(std::to_string(m_level));
+		m_hud->UpdateLevel(m_level);
 		TickIntervalSeconds = LevelToTickIntervalSec(m_level);
 	}
 
 	void IncrementScore(int score) {
 		m_score += score;
-		m_scoreText.ChangeText(std::to_string(m_score));
+		m_hud->UpdateScore(m_score);
 	}
 
 	void IncrementLines(int lines) {
 		m_lines += lines;
-		m_linesText.ChangeText(std::to_string(m_lines));
+		m_hud->UpdateLines(m_lines);
 	}
 
 	/// <param name="strength">float between 0 and 1</param>
@@ -530,11 +634,6 @@ public:
 	}
 
 	virtual void act() override {
-		/*if (true) {
-			auto& transform = m_context.getTransform();
-			transform.translate(Vector3{ .x = 1, .z = 1 } * DeltaTime::get(), TransformSpace::scene);
-			transform.rotate(Quaternion::createRotation(Vector3::up, -5.0_deg * DeltaTime::get()));
-		}*/
 		switch (GameState)
 		{
 			case GameState::Menu:
@@ -558,6 +657,7 @@ public:
 	}
 
 	void InitText() {
+		m_gameBoard = std::make_unique<GameBoard>();
 		InitGameHud();
 		InitMenus();
 	}

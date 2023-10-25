@@ -29,44 +29,6 @@ static void updateTitle() {
 	}
 }
 
-void CreateGrid() {
-	float size = 0.05;
-	float horizontalLimit = 5;
-	float verticalLimit = 10;
-	for (float i = -horizontalLimit; i <= horizontalLimit; i++) {
-		Grid.push_back(CurrentScene::createAndGetEntity(EntityConfig{
-							.transformConfig = TransformConfig{
-								.translation = Vector3{
-									.x = i,
-									.y = 0,
-									.z = zIndexMap
-								},
-								.scale = Vector3{.x = size, .y = verticalLimit * 2, .z = 1 }
-							},
-							.appearanceConfig = AppearanceConfig{
-								.meshIndex = 0,
-								.color = ColorRgb::black
-							}
-			}));
-	}
-	for (float i = -verticalLimit; i <= verticalLimit; i++) {
-		Grid.push_back(CurrentScene::createAndGetEntity(EntityConfig{
-						.transformConfig = TransformConfig{
-							.translation = Vector3{
-								.x = 0,
-								.y = i,
-								.z = zIndexMap
-							},
-							.scale = Vector3{.x = verticalLimit, .y = size, .z = 1 }
-						},
-						.appearanceConfig = AppearanceConfig{
-							.meshIndex = 0,
-							.color = ColorRgb::black
-						}
-			}));
-	}
-}
-
 void CreateBorders() {
 	float x = 20.5;
 	float xScale = 31;
@@ -181,7 +143,6 @@ int main() {
 			},
 			.startScript = []() {
 				InitSound();
-				CreateGrid();
 				//CreateBorders();
 				//CreateCrosshair();
 				GameManager::Instance->InitText();
