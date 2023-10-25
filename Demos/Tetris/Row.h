@@ -32,6 +32,22 @@ public:
 		}
 	}
 
+	void Show() {
+		for (int i = 0; i < 10; i++) {
+			if (m_entities[i].has_value()) {
+				m_entities[i].value().getAppearance().setVisible(true);
+			}
+		}
+	}
+
+	void Hide() {
+		for (int i = 0; i < 10; i++) {
+			if (m_entities[i].has_value()) {
+				m_entities[i].value().getAppearance().setVisible(false);
+			}
+		}
+	}
+
 	void AddEntity(int index, EntityContext& entity) {
 		if (m_entities[index].has_value()) {
 			Logger::error("Entity placed in row twice");

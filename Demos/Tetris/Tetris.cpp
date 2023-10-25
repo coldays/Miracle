@@ -34,7 +34,7 @@ void CreateGrid() {
 	float horizontalLimit = 5;
 	float verticalLimit = 10;
 	for (float i = -horizontalLimit; i <= horizontalLimit; i++) {
-		CurrentScene::createEntity(EntityConfig{
+		Grid.push_back(CurrentScene::createAndGetEntity(EntityConfig{
 							.transformConfig = TransformConfig{
 								.translation = Vector3{
 									.x = i,
@@ -46,10 +46,10 @@ void CreateGrid() {
 								.meshIndex = 0,
 								.color = ColorRgb::black
 							}
-			});
+			}));
 	}
 	for (float i = -verticalLimit; i <= verticalLimit; i++) {
-		CurrentScene::createEntity(EntityConfig{
+		Grid.push_back(CurrentScene::createAndGetEntity(EntityConfig{
 						.transformConfig = TransformConfig{
 							.translation = Vector3{
 								.x = 0,
@@ -61,7 +61,7 @@ void CreateGrid() {
 							.meshIndex = 0,
 							.color = ColorRgb::black
 						}
-			});
+			}));
 	}
 }
 
@@ -161,6 +161,13 @@ int main() {
 						.cameraConfig = OrthographicCameraConfig{
 							.zoomFactor = 0.5,
 						},
+						/*.transformConfig = TransformConfig {
+							.translation = Vector3{.x = 0, .y = 0, .z = -20 },
+							.scale = shapeScale,
+						},
+						.cameraConfig = PerspectiveCameraConfig {
+							.fieldOfView = 60.0_deg,
+						},*/
 						.behaviorFactory = BehaviorFactory::createFactoryFor<GameManager>(),
 					},
 				},
@@ -177,9 +184,6 @@ int main() {
 				updateTitle();
 			},
 			.updateScript = []() {
-				if (Keyboard::isKeyPressed(KeyboardKey::keyEscape)) {
-					CurrentApp::close();
-				}
 			}
 		}
 	);

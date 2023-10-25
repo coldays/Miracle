@@ -20,24 +20,94 @@ struct ShapeWrapper {
 			ec.destroyEntity();
 		}
 	}
+
+	void Show() {
+		Shape.getAppearance().setVisible(true);
+		for (EntityContext& ec : Children) {
+			ec.getAppearance().setVisible(true);
+		}
+	}
+
+	void Hide() {
+		Shape.getAppearance().setVisible(false);
+		for (EntityContext& ec : Children) {
+			ec.getAppearance().setVisible(false);
+		}
+	}
 };
+
+float zIndexGui = 0;
+float zIndexBlocks = 1;
+float zIndexMap = 2;
 
 class GameManager;
 ShapeWrapper CreateBlock(ShapeType);
 
-//KeyboardKey MoveLeftKey = KeyboardKey::keyA;
-//KeyboardKey MoveRightKey = KeyboardKey::keyD;
-//KeyboardKey RotateLeftKey = KeyboardKey::keyS;
-//KeyboardKey RotateRightKey = KeyboardKey::keyW;
-//KeyboardKey HardDropKey = KeyboardKey::keySpace;
-//KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+std::vector<EntityContext> Grid;
 
-KeyboardKey MoveLeftKey = KeyboardKey::keyLeft;
-KeyboardKey MoveRightKey = KeyboardKey::keyRight;
-KeyboardKey RotateLeftKey = KeyboardKey::keyUp;
+struct KeyboardConfig {
+	KeyboardKey MoveLeftKey = KeyboardKey::keyA;
+	KeyboardKey MoveRightKey = KeyboardKey::keyD;
+	KeyboardKey RotateLeftKey = KeyboardKey::keyS;
+	KeyboardKey RotateRightKey = KeyboardKey::keyW;
+	KeyboardKey HardDropKey = KeyboardKey::keySpace;
+	KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+};
+
+bool isAndreasConfig = true;
+
+KeyboardConfig AndreasConfig = {
+	.MoveLeftKey = KeyboardKey::keyA,
+	.MoveRightKey = KeyboardKey::keyD,
+	.RotateLeftKey = KeyboardKey::keyS,
+	.RotateRightKey = KeyboardKey::keyW,
+	.HardDropKey = KeyboardKey::keySpace,
+	.SoftDropKey = KeyboardKey::keyDown,
+};
+KeyboardConfig CristinaConfig = {
+	.MoveLeftKey = KeyboardKey::keyA,
+	.MoveRightKey = KeyboardKey::keyD,
+	.RotateLeftKey = KeyboardKey::keyComma,
+	.RotateRightKey = KeyboardKey::keyPeriod,
+	.HardDropKey = KeyboardKey::keyW,
+	.SoftDropKey = KeyboardKey::keyS,
+};
+
+KeyboardKey MoveLeftKey = KeyboardKey::keyA;
+KeyboardKey MoveRightKey = KeyboardKey::keyD;
+KeyboardKey RotateLeftKey = KeyboardKey::keyS;
 KeyboardKey RotateRightKey = KeyboardKey::keyW;
 KeyboardKey HardDropKey = KeyboardKey::keySpace;
 KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+
+void SwapKeyConfig(KeyboardConfig config) {
+	MoveLeftKey = config.MoveLeftKey;
+	MoveRightKey = config.MoveRightKey;
+	RotateLeftKey = config.RotateLeftKey;
+	RotateRightKey = config.RotateRightKey;
+	SoftDropKey = config.SoftDropKey;
+	HardDropKey = config.HardDropKey;
+}
+
+std::string GetKeyName(KeyboardKey key) {
+	if ((short)key >= 39 && (short)key <= 96) {
+		return std::string() + (char)key;
+	}
+	switch (key) {
+		case KeyboardKey::keySpace:
+			return "space";
+		case KeyboardKey::keyLeft:
+			return "left";
+		case KeyboardKey::keyRight:
+			return "right";
+		case KeyboardKey::keyUp:
+			return "up";
+		case KeyboardKey::keyDown:
+			return "down";
+		default:
+			return "unknown";
+	}
+}
 
 static float LevelToTickIntervalSec(int level) {
 	const float gameboyFps = 59.73;
@@ -53,7 +123,8 @@ float TickIntervalSeconds = 0.5;
 enum class GameState {
 	Menu,
 	Playing,
-	GameOver
+	GameOver,
+	Paused
 };
 
 class GameManager : public Behavior {
@@ -68,6 +139,10 @@ private:
 	std::optional<ShapeWrapper> m_currentShape;
 	const float m_clearPause = 0.8f;
 	float m_clearPauseTime = 0;
+	bool m_showGrid = true;
+	bool m_screenShakeEnabled = true;
+	float m_screenShakeTime = 0;
+	float m_screenShakeStrength = 0;
 	Sound m_theme = Sound("Theme.wav");
 	Sound m_clickSound = Sound("Click.wav");
 	Sound m_rowCompleteSound = Sound("Row.wav");
@@ -82,6 +157,8 @@ private:
 	Text m_linesText;
 	std::unique_ptr<Menu> m_mainMenu;
 	std::unique_ptr<Menu> m_levelMenu;
+	std::unique_ptr<Menu> m_optionsMenu;
+	std::unique_ptr<Menu> m_keyConfMenu;
 	std::unique_ptr<Menu> m_gameOverMenu;
 	Menu* m_currentMenu = nullptr;
 
@@ -95,14 +172,43 @@ private:
 	void InitMenus() {
 		float x = -12;
 		float y = 8;
+
 		m_levelMenu = std::make_unique<Menu>("Level", x, y);
+		m_levelMenu->AddMenuNode("Config: Andreas", [this] {
+			if (isAndreasConfig) {
+				SwapKeyConfig(CristinaConfig);
+				m_levelMenu->UpdateNodeText(0, "Config: Cristina");
+			}
+			else {
+				SwapKeyConfig(AndreasConfig);
+				m_levelMenu->UpdateNodeText(0, "Config: Andreas");
+			}
+			isAndreasConfig = !isAndreasConfig;
+		});
 		for (int i = 0; i < 10; i++) {
 			m_levelMenu->AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
 		}
+
+		m_keyConfMenu = std::make_unique<Menu>("Key config", x, y);
+		m_keyConfMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_optionsMenu); });
+		m_keyConfMenu->AddMenuNode("Move Left: " + GetKeyName(MoveLeftKey), [] {});
+		m_keyConfMenu->AddMenuNode("Move Right: " + GetKeyName(MoveRightKey), [] {});
+		m_keyConfMenu->AddMenuNode("Rotate Left: " + GetKeyName(RotateLeftKey), [] {});
+		m_keyConfMenu->AddMenuNode("Rotate Right: " + GetKeyName(RotateRightKey), [] {});
+		m_keyConfMenu->AddMenuNode("Soft Drop: " + GetKeyName(SoftDropKey), [] {});
+		m_keyConfMenu->AddMenuNode("Hard Drop: " + GetKeyName(HardDropKey), [] {});
+
+		m_optionsMenu = std::make_unique<Menu>("Options", x, y);
+		m_optionsMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_mainMenu); });
+		m_optionsMenu->AddMenuNode("Key config", [this] { SetCurrentMenu(m_keyConfMenu); });
+		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", m_showGrid, [this] { ToggleGrid(); });
+		m_optionsMenu->AddToggleMenuNode("Screen shake", "On", "Off", m_screenShakeEnabled, [this] { m_screenShakeEnabled = !m_screenShakeEnabled; });
+		
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
 		m_mainMenu->AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
-		m_mainMenu->AddMenuNode("Options", [] {});
+		m_mainMenu->AddMenuNode("Options", [this] { SetCurrentMenu(m_optionsMenu); });
 		m_mainMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+		
 		m_gameOverMenu = std::make_unique<Menu>("Game Over!", x - 1, y);
 		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
 		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
@@ -110,6 +216,15 @@ private:
 		SetCurrentMenu(m_mainMenu);
 	}
 
+	void ToggleGrid() {
+		bool show = !m_showGrid;
+		for (int i = 1; i < Grid.size() - 1; i++) {
+			if (i == 10) continue;
+			if (i == 11) continue;
+			Grid[i].getAppearance().setVisible(show);
+		}
+		m_showGrid = show;
+	}
 
 	void Tick() {
 		int fullRows = 0;
@@ -214,7 +329,65 @@ private:
 		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
 	}
 
+	void TogglePause() {
+		switch (GameState) {
+			case GameState::Playing:
+				// Hide all blocks
+				for (Row& row : m_rows) {
+					row.Hide();
+				}
+				if (m_currentShape.has_value()) {
+					m_currentShape.value().Hide();
+				}
+				GameState = GameState::Paused;
+				break;
+			case GameState::Paused:
+				// Show all blocks
+				for (Row& row : m_rows) {
+					row.Show();
+				}
+				if (m_currentShape.has_value()) {
+					m_currentShape.value().Show();
+				}
+				GameState = GameState::Playing;
+				break;
+			default:
+				return;
+		}
+	}
+
+	void CameraAct() {
+		// Shake screen
+		if (m_screenShakeTime > 0) {
+			auto& transform = m_context.getTransform();
+			auto& translate = transform.getTranslation();
+			m_screenShakeTime -= DeltaTime::get();
+
+			float offset = 50 + m_screenShakeStrength * 50;
+			float scale = m_screenShakeStrength / 5.0f;
+
+			Vector3 move = {
+				.x = (float)std::cos(CurrentApp::getRuntimeDuration().count() * offset) * scale,
+				.y = (float)std::sin(CurrentApp::getRuntimeDuration().count() * offset) * scale
+			};
+
+			transform.setTranslation(Vector3{} + move);
+
+			// Reset shake since we are out of time
+			if (m_screenShakeTime <= 0) {
+				transform.setTranslation(Vector3{});
+			}
+		}
+	}
+
 	void InPlayAct() {
+		if (Keyboard::isKeyPressed(KeyboardKey::keyEscape)) {
+			TogglePause();
+			return;
+		}
+
+		CameraAct();
+
 		if (m_clearPauseTime > 0) {
 			const float numberOfFlashes = 4;
 			for (int i = 0; i < m_height; i++) {
@@ -301,6 +474,13 @@ public:
 		m_linesText.ChangeText(std::to_string(m_lines));
 	}
 
+	/// <param name="strength">float between 0 and 1</param>
+	void ScreenShake(float strength) {
+		if (!m_screenShakeEnabled) return;
+		m_screenShakeTime = 0.2f;
+		m_screenShakeStrength = std::clamp(strength, 0.0f, 1.0f);
+	}
+
 	void FinalizeShape(std::vector<EntityContext>& entities) {
 		for (EntityContext& ec : entities) {
 			auto& pos = ec.getTransform().getTranslation();
@@ -334,6 +514,11 @@ public:
 	}
 
 	virtual void act() override {
+		/*if (true) {
+			auto& transform = m_context.getTransform();
+			transform.translate(Vector3{ .x = 1, .z = 1 } * DeltaTime::get(), TransformSpace::scene);
+			transform.rotate(Quaternion::createRotation(Vector3::up, -5.0_deg * DeltaTime::get()));
+		}*/
 		switch (GameState)
 		{
 			case GameState::Menu:
@@ -344,6 +529,11 @@ public:
 				break;
 			case GameState::GameOver:
 				m_gameOverMenu->Act();
+				break;
+			case GameState::Paused:
+				if (Keyboard::isKeyPressed(KeyboardKey::keyEscape)) {
+					TogglePause();
+				}
 				break;
 			default:
 				break;
@@ -393,6 +583,8 @@ private:
 			// Fastfall bonus score
 			if (m_hardDroppedBlocks > 0) {
 				m_gameManager->IncrementScore(m_hardDroppedBlocks * 2);
+				m_gameManager->ScreenShake(m_hardDroppedBlocks / 20.0f);
+				
 			} else if (m_softDroppedBlocks > 0) {
 				m_gameManager->IncrementScore(m_softDroppedBlocks);
 			}
@@ -561,7 +753,10 @@ ShapeWrapper CreateBlock(ShapeType type) {
 			entities = CreateZ(startPos);
 			break;
 		default:
-			std::exit(-1);
+		{
+			Logger::error("Requested unknown shape type");
+			exit(-1);
+		}
 	}
 	EntityContext shape = CurrentScene::createAndGetEntity(EntityConfig{
 		.transformConfig = TransformConfig{
