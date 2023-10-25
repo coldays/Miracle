@@ -124,6 +124,12 @@ enum class GameState {
 	Paused
 };
 
+enum class DropType {
+	Gravity,
+	SoftDrop,
+	HardDrop
+};
+
 class GameManager : public Behavior {
 private:
 	const int m_maxLevel = 20;
@@ -137,15 +143,17 @@ private:
 	const float m_clearPause = 0.8f;
 	float m_clearPauseTime = 0;
 	bool m_showGrid = true;
-	bool m_screenShakeEnabled = true;
+	bool m_screenShakeEnabled = false;
 	float m_screenShakeTime = 0;
 	float m_screenShakeStrength = 0;
+	const float m_screenShakeDurationSec = 0.2f;
 	Sound m_theme = Sound("Theme.wav");
-	Sound m_clickSound = Sound("Click.wav");
 	Sound m_rowCompleteSound = Sound("Row.wav");
 	Sound m_tetrisSound = Sound("Tetris.wav");
 	Sound m_gameOverSound = Sound("GameOver.wav");
 	//Sound m_levelUpSound = Sound("LevelUp.wav");
+	Sound m_clickSound = Sound("Click.wav");
+	Sound m_hardDropSound = Sound("HardDrop.wav");
 	Text m_scoreHeader;
 	Text m_scoreText;
 	Text m_levelHeader;
@@ -474,18 +482,29 @@ public:
 	/// <param name="strength">float between 0 and 1</param>
 	void ScreenShake(float strength) {
 		if (!m_screenShakeEnabled) return;
-		m_screenShakeTime = 0.2f;
+		m_screenShakeTime = m_screenShakeDurationSec;
 		m_screenShakeStrength = std::clamp(strength, 0.0f, 1.0f);
 	}
 
-	void FinalizeShape(std::vector<EntityContext>& entities) {
+	void FinalizeShape(std::vector<EntityContext>& entities, DropType drop) {
 		for (EntityContext& ec : entities) {
 			auto& pos = ec.getTransform().getTranslation();
 			int rowIndex = GetRowIndex(pos.y);
 			int colIndex = GetColumnIndex(pos.x);
 			Row& row = m_rows[rowIndex];
 			row.AddEntity(colIndex, ec);
-			m_clickSound.Play();
+		}
+
+		switch (drop)
+		{
+			case DropType::HardDrop:
+				m_hardDropSound.Play();
+				break;
+			case DropType::Gravity:
+			case DropType::SoftDrop:
+			default:
+				m_clickSound.Play();
+				break;
 		}
 
 		// Clear current shape
@@ -575,16 +594,18 @@ private:
 		shouldFinalize |= m_gameManager->WillOverlap(m_entities, Vector3{ .y = -1 });
 
 		if (shouldFinalize) {
-			m_gameManager->FinalizeShape(m_entities);
-			m_entities.clear();
+			DropType drop = DropType::Gravity;
 			// Fastfall bonus score
 			if (m_hardDroppedBlocks > 0) {
 				m_gameManager->IncrementScore(m_hardDroppedBlocks * 2);
 				m_gameManager->ScreenShake(m_hardDroppedBlocks / 20.0f);
-				
+				drop = DropType::HardDrop;
 			} else if (m_softDroppedBlocks > 0) {
 				m_gameManager->IncrementScore(m_softDroppedBlocks);
+				drop = DropType::SoftDrop;
 			}
+			m_gameManager->FinalizeShape(m_entities, drop);
+			m_entities.clear();
 			// Self-destruct
 			m_context.destroyEntity();
 			m_destroyed = true;

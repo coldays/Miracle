@@ -1,5 +1,5 @@
 # Target definition
-add_executable(Tetris "Tetris.cpp" "Row.h" "Tetris.h" "Sound.h" "Text.h" "ttf2mesh/ttf2mesh.h" "ttf2mesh/ttf2mesh.c" "Text.cpp" "Menu.h"   "Constants.h")
+add_executable(Tetris "Tetris.cpp" "Row.h" "Tetris.h" "Sound.h" "Text.h" "ttf2mesh/ttf2mesh.h" "ttf2mesh/ttf2mesh.c" "Text.cpp" "Menu.h" "Constants.h")
 
 # Target properties
 set_target_properties(
@@ -35,6 +35,11 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/Row.wav
                 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Row.wav)
+add_custom_command(
+        TARGET Tetris POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/HardDrop.wav
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/HardDrop.wav)
 
 # Linking
 target_link_libraries(Tetris
