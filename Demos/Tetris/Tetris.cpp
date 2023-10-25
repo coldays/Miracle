@@ -39,7 +39,8 @@ void CreateGrid() {
 								.translation = Vector3{
 									.x = i,
 									.y = 0,
-									.z = 0},
+									.z = zIndexMap
+								},
 								.scale = Vector3{.x = size, .y = verticalLimit * 2, .z = 1 }
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -54,7 +55,8 @@ void CreateGrid() {
 							.translation = Vector3{
 								.x = 0,
 								.y = i,
-								.z = 0},
+								.z = zIndexMap
+							},
 							.scale = Vector3{.x = verticalLimit, .y = size, .z = 1 }
 						},
 						.appearanceConfig = AppearanceConfig{
@@ -73,7 +75,8 @@ void CreateBorders() {
 								.translation = Vector3{
 									.x = -x,
 									.y = 0,
-									.z = 0},
+									.z = zIndexMap
+								},
 								.scale = Vector3{.x = xScale, .y = 20, .z = 1 }
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -86,7 +89,8 @@ void CreateBorders() {
 								.translation = Vector3{
 									.x = x,
 									.y = 0,
-									.z = 0},
+									.z = zIndexMap
+								},
 								.scale = Vector3{.x = xScale, .y = 20, .z = 1 }
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -102,7 +106,8 @@ void CreateCrosshair() {
 								.translation = Vector3{
 									.x = 0,
 									.y = 0,
-									.z = 0},
+									.z = zIndexMap
+								},
 								.scale = Vector3{.x = 0.5, .y = 0.5, .z = 1 }
 							},
 							.appearanceConfig = AppearanceConfig{

@@ -7,6 +7,7 @@
 #include "Text.h"
 #include <algorithm>
 #include "Menu.h"
+#include "Constants.h"
 
 using namespace Miracle;
 
@@ -35,10 +36,6 @@ struct ShapeWrapper {
 		}
 	}
 };
-
-float zIndexGui = 0;
-float zIndexBlocks = 1;
-float zIndexMap = 2;
 
 class GameManager;
 ShapeWrapper CreateBlock(ShapeType);
@@ -705,9 +702,10 @@ public:
 			auto& childTransform = ec.getTransform();
 			if (rotate != 0) {
 				auto relativeTranslate = childTransform.getTranslation() - parentTranslate;
-				Vector3 rotatedTranslation = MathUtilities::rotateVector(relativeTranslate,
+				Vector3 rotatedTranslation = parentTranslate + MathUtilities::rotateVector(relativeTranslate,
 					Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
-				childTransform.setTranslation(parentTranslate + rotatedTranslation);
+				rotatedTranslation.z = 0;
+				childTransform.setTranslation(rotatedTranslation);
 			}
 			else {
 				childTransform.translate(Vector3{ .x = move }, TransformSpace::scene);
@@ -760,7 +758,7 @@ ShapeWrapper CreateBlock(ShapeType type) {
 	}
 	EntityContext shape = CurrentScene::createAndGetEntity(EntityConfig{
 		.transformConfig = TransformConfig{
-			.translation = Vector3::createFromVector2(startPos, 0),
+			.translation = Vector3::createFromVector2(startPos, zIndexBlocks),
 		},
 		/*.appearanceConfig = AppearanceConfig{
 			.meshIndex = 0,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Miracle/Miracle.hpp>
+#include "Constants.h"
 
 using namespace Miracle;
 
@@ -28,7 +29,11 @@ std::vector<EntityContext> CreateLine(Vector2& startPos) {
 	for (int i = 0; i < 4; i++) {
 		entities.push_back(CurrentScene::createAndGetEntity(EntityConfig{
 						.transformConfig = TransformConfig {
-							.translation = Vector3{.x = ++startX, .y = startY, .z = 0 },
+							.translation = Vector3{
+								.x = ++startX,
+								.y = startY,
+								.z = zIndexBlocks
+							},
 							.scale = shapeScale,
 						},
 						.appearanceConfig = AppearanceConfig{
@@ -52,7 +57,8 @@ std::vector<EntityContext> CreateSquare(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY + y,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -75,7 +81,8 @@ std::vector<EntityContext> CreateT(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + 1,
 									.y = startY + 1,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -89,7 +96,8 @@ std::vector<EntityContext> CreateT(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -111,7 +119,8 @@ std::vector<EntityContext> CreateJ(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX,
 									.y = startY + 1,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -125,7 +134,8 @@ std::vector<EntityContext> CreateJ(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -147,7 +157,8 @@ std::vector<EntityContext> CreateL(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + 2,
 									.y = startY + 1,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -161,7 +172,8 @@ std::vector<EntityContext> CreateL(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -184,7 +196,8 @@ std::vector<EntityContext> CreateS(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY + 1,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -199,7 +212,8 @@ std::vector<EntityContext> CreateS(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -222,7 +236,8 @@ std::vector<EntityContext> CreateZ(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY + 1,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{
@@ -237,7 +252,8 @@ std::vector<EntityContext> CreateZ(Vector2& startPos) {
 								.translation = Vector3{
 									.x = startX + x,
 									.y = startY,
-									.z = 0},
+									.z = zIndexBlocks
+								},
 								.scale = shapeScale
 							},
 							.appearanceConfig = AppearanceConfig{

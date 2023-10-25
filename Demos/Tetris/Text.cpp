@@ -1,5 +1,6 @@
 #include "Text.h"
 #include "ttf2mesh/ttf2mesh.h"
+#include "Constants.h"
 
 std::unordered_map<char, size_t> CharToMeshIndex;
 
@@ -78,7 +79,8 @@ void Text::CreateGlyphEntity(Vector2 pos, float scale, ColorRgb color, char c) {
 			.translation = Vector3{
 				.x = pos.x,
 				.y = pos.y,
-				.z = 0},
+				.z = zIndexGui
+			},
 			.scale = Vector3 { .x = scale, .y = scale }
 		},
 		.appearanceConfig = AppearanceConfig{

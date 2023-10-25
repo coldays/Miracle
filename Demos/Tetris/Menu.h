@@ -2,6 +2,7 @@
 
 #include <Miracle/Miracle.hpp>
 #include "Text.h"
+#include "Constants.h"
 
 using namespace Miracle;
 
@@ -95,7 +96,7 @@ private:
 				.translation = Vector3{
 					.x = m_cursorX,
 					.y = y + 0.25f - 1.5f,
-					.z = 0
+					.z = zIndexGui
 				},
 				.scale = Vector3 {.x = 0.25, .y = 0.25 }
 			},
@@ -112,7 +113,9 @@ private:
 		auto& translation = transform.getTranslation();
 		transform.setTranslation(Vector3{
 			.x = m_cursorX,
-			.y = m_menuNodes[m_selectedIndex]->Y + m_indicatorOffsetY });
+			.y = m_menuNodes[m_selectedIndex]->Y + m_indicatorOffsetY,
+			.z = zIndexGui
+		});
 	}
 
 public:
@@ -164,7 +167,8 @@ public:
 			auto& translation = transform.getTranslation();
 			transform.setTranslation(Vector3{
 				.x = m_cursorX + 0.25f * m_cursorDir,
-				.y = m_menuNodes[m_selectedIndex]->Y + m_indicatorOffsetY });
+				.y = m_menuNodes[m_selectedIndex]->Y + m_indicatorOffsetY,
+				.z = zIndexGui });
 			m_cursorDir = -m_cursorDir;
 		}
 
