@@ -46,25 +46,25 @@ private:
 	std::string BaseText;
 
 	void RefreshText() {
-		ChangeText(BaseText + " [" + (Enabled ? EnabledVerb : DisabledVerb) + "]");
+		ChangeText(BaseText + " [" + (*Enabled ? EnabledVerb : DisabledVerb) + "]");
 	}
 
 public:
-	bool Enabled = false;
+	bool* Enabled;
 
 	ToggleMenuNode(std::string text, std::string enabledVerb, std::string disabledVerb,
-		bool defaultState, float x, float y, std::function<void()> action) :
-		MenuNode(text, x, y, [this, action] { action(); Toggle(); }) {
+		bool* value, float x, float y) :
+		Enabled(value),
+		MenuNode(text, x, y, [this] { Toggle(); }) {
 		BaseText = text;
 		EnabledVerb = enabledVerb;
 		DisabledVerb = disabledVerb;
-		Enabled = defaultState;
 		
 		RefreshText();
 	}
 
 	void Toggle() {
-		Enabled = !Enabled;
+		*Enabled = !(*Enabled);
 		RefreshText();
 	}
 };
@@ -141,11 +141,11 @@ public:
 	}
 
 	void AddToggleMenuNode(std::string text, std::string enabledVerb,
-		std::string disabledVerb, bool defaultState, std::function<void()> action) {
+		std::string disabledVerb, bool* value) {
 		float x = m_currentX;
 		float y = m_currentY;
 		m_menuNodes.emplace_back(new ToggleMenuNode(text, enabledVerb, disabledVerb,
-			defaultState, x, y, action));
+			value, x, y));
 		if (m_isHidden) {
 			m_menuNodes[m_menuNodes.size() - 1]->Hide();
 		}

@@ -8,13 +8,22 @@
 #include <algorithm>
 #include "Menu.h"
 #include "Constants.h"
+#include <iostream>
 
 using namespace Miracle;
+
+bool ShowGhost = false;
+bool EnableHold = false;
+
+Vector3 PreviewBlockPos;
+Vector3 HoldBlockPos;
 
 class ShapeWrapper {
 public:
 	EntityContext Shape;
 	std::vector<EntityContext> Children;
+	Vector3 SpawnPoint;
+	bool CanHold = true;
 
 	void Destroy() {
 		Shape.destroyEntity();
@@ -34,6 +43,36 @@ public:
 			ec.getAppearance().setVisible(false);
 		}
 	}
+
+	void SetActive(bool active) {
+		Shape.getAppearance().setVisible(active);
+	}
+
+	void Spawn() {
+		Move(SpawnPoint);
+		Shape.getAppearance().setVisible(true);
+	}
+
+	void Hold() {
+		Move(HoldBlockPos);
+		Shape.getAppearance().setVisible(false);
+	}
+
+	void Preview() {
+		Move(PreviewBlockPos);
+		Shape.getAppearance().setVisible(false);
+	}
+
+	void Move(Vector3 pos) {
+		auto& parentTransform = Shape.getTransform();
+		Vector3 parentTranslate = parentTransform.getTranslation();
+		Vector3 diff = pos - parentTranslate;
+		parentTransform.translate(Vector3{ .x = diff.x, .y = diff.y }, TransformSpace::scene);
+		for (auto& ec : Children) {
+			auto& childTransform = ec.getTransform();
+			childTransform.translate(Vector3{ .x = diff.x, .y = diff.y }, TransformSpace::scene);
+		}
+	}
 };
 
 class Hud {
@@ -41,13 +80,25 @@ class Hud {
 	Text m_scoreText;
 	Text m_levelHeader;
 	Text m_levelText;
-	Text m_LinesHeader;
+	Text m_linesHeader;
 	Text m_linesText;
+	Text m_previewHeader;
+	Text m_holdHeader;
 public:
-	Hud(float x, float y) {
+	Hud() {
+		float x = 5.5;
+		float y = 8;
 		const float xIndent = 0.5;
 		const float headerSpacing = 2;
 		const float spacing = 1;
+		m_holdHeader = Text(Vector2{ .x = -10, .y = y }, 1, ColorRgb::white, "Hold:");
+		m_holdHeader.Hide();
+		HoldBlockPos = Vector3{ .x = -8, .y = y - headerSpacing, .z = zIndexGui };
+		m_previewHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Preview:");
+		m_previewHeader.Hide();
+		y -= headerSpacing;
+		PreviewBlockPos = { .x = x + 2.5f, .y = y, .z = zIndexGui };
+		y -= 3.0f;
 		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
 		m_scoreHeader.Hide();
 		y -= spacing;
@@ -60,8 +111,8 @@ public:
 		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
 		m_levelText.Hide();
 		y -= headerSpacing;
-		m_LinesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
-		m_LinesHeader.Hide();
+		m_linesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
+		m_linesHeader.Hide();
 		y -= spacing;
 		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
 		m_linesText.Hide();
@@ -84,8 +135,11 @@ public:
 		m_scoreText.Show();
 		m_levelHeader.Show();
 		m_levelText.Show();
-		m_LinesHeader.Show();
+		m_linesHeader.Show();
 		m_linesText.Show();
+		m_previewHeader.Show();
+		if (EnableHold)
+			m_holdHeader.Show();
 	}
 
 	void Hide() {
@@ -93,8 +147,10 @@ public:
 		m_scoreText.Hide();
 		m_levelHeader.Hide();
 		m_levelText.Hide();
-		m_LinesHeader.Hide();
+		m_linesHeader.Hide();
 		m_linesText.Hide();
+		m_previewHeader.Hide();
+		m_holdHeader.Hide();
 	}
 };
 
@@ -182,6 +238,7 @@ struct KeyboardConfig {
 	KeyboardKey RotateRightKey = KeyboardKey::keyW;
 	KeyboardKey HardDropKey = KeyboardKey::keySpace;
 	KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+	KeyboardKey HoldKey = KeyboardKey::keyH;
 };
 
 bool isAndreasConfig = true;
@@ -209,6 +266,7 @@ KeyboardKey RotateLeftKey = KeyboardKey::keyS;
 KeyboardKey RotateRightKey = KeyboardKey::keyW;
 KeyboardKey HardDropKey = KeyboardKey::keySpace;
 KeyboardKey SoftDropKey = KeyboardKey::keyDown;
+KeyboardKey HoldKey = KeyboardKey::keyH;
 
 void SwapKeyConfig(KeyboardConfig config) {
 	MoveLeftKey = config.MoveLeftKey;
@@ -217,6 +275,7 @@ void SwapKeyConfig(KeyboardConfig config) {
 	RotateRightKey = config.RotateRightKey;
 	SoftDropKey = config.SoftDropKey;
 	HardDropKey = config.HardDropKey;
+	HoldKey = config.HoldKey;
 }
 
 std::string GetKeyName(KeyboardKey key) {
@@ -273,6 +332,8 @@ private:
 	Row m_rows[20];
 	float m_tickTime = 0;
 	std::optional<ShapeWrapper> m_currentShape;
+	std::optional<ShapeWrapper> m_previewShape;
+	std::optional<ShapeWrapper> m_heldShape;
 	const float m_clearPause = 0.8f;
 	float m_clearPauseTime = 0;
 	bool m_screenShakeEnabled = false;
@@ -281,6 +342,7 @@ private:
 	const float m_screenShakeDurationSec = 0.2f;
 	float m_pauseCoolDown = 0;
 	const float m_pauseCoolDownTime = 5.0f;
+
 	Sound m_theme = Sound("Theme.wav");
 	Sound m_rowCompleteSound = Sound("Row.wav");
 	Sound m_tetrisSound = Sound("Tetris.wav");
@@ -288,6 +350,7 @@ private:
 	Sound m_levelUpSound = Sound("LevelUp.wav");
 	Sound m_clickSound = Sound("Click.wav");
 	Sound m_hardDropSound = Sound("HardDrop.wav");
+
 	std::unique_ptr<Menu> m_mainMenu;
 	std::unique_ptr<Menu> m_levelMenu;
 	std::unique_ptr<Menu> m_optionsMenu;
@@ -316,7 +379,11 @@ private:
 
 		m_keyConfMenu = std::make_unique<Menu>("Key config", x, y);
 		m_keyConfMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_optionsMenu); });
-		m_keyConfMenu->AddMenuNode("Move Left: " + GetKeyName(MoveLeftKey), [] {});
+		m_keyConfMenu->AddMenuNode("Move Left: " + GetKeyName(MoveLeftKey), [this] {
+			// Use keyboard event somehow?
+			MoveLeftKey = KeyboardKey::keyLeft;
+			m_keyConfMenu->UpdateNodeText(1, "Move Left: " + GetKeyName(MoveLeftKey));
+		});
 		m_keyConfMenu->AddMenuNode("Move Right: " + GetKeyName(MoveRightKey), [] {});
 		m_keyConfMenu->AddMenuNode("Rotate Left: " + GetKeyName(RotateLeftKey), [] {});
 		m_keyConfMenu->AddMenuNode("Rotate Right: " + GetKeyName(RotateRightKey), [] {});
@@ -326,12 +393,11 @@ private:
 		m_optionsMenu = std::make_unique<Menu>("Options", x, y);
 		m_optionsMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_mainMenu); });
 		m_optionsMenu->AddMenuNode("Key config", [this] { SetCurrentMenu(m_keyConfMenu); });
-		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", m_gameBoard->ShowGridLines, [this] { ToggleGrid(); });
-		m_optionsMenu->AddToggleMenuNode("Screen shake", "On", "Off", m_screenShakeEnabled, [this] { m_screenShakeEnabled = !m_screenShakeEnabled; });
+		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", &m_gameBoard->ShowGridLines);
+		m_optionsMenu->AddToggleMenuNode("Screen shake", "On", "Off", &m_screenShakeEnabled);
 		// Todo:
-		m_optionsMenu->AddToggleMenuNode("Hold", "On", "Off", false, [this] { });
-		m_optionsMenu->AddToggleMenuNode("Ghost", "On", "Off", false, [this] {  });
-		m_optionsMenu->AddToggleMenuNode("Preview", "On", "Off", false, [this] {  });
+		m_optionsMenu->AddToggleMenuNode("Hold", "On", "Off", &EnableHold);
+		m_optionsMenu->AddToggleMenuNode("Ghost", "On", "Off", &ShowGhost);
 		
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
 		m_mainMenu->AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
@@ -350,8 +416,17 @@ private:
 		SetCurrentMenu(m_mainMenu);
 	}
 
-	void ToggleGrid() {
-		m_gameBoard->ShowGridLines = !m_gameBoard->ShowGridLines;
+	void SpawnNext() {
+		// Will only happen on first tick
+		if (!m_previewShape.has_value())
+			m_previewShape.emplace(CreateBlock((ShapeType)(rand() % 7)));
+		// Swap currentshape with preview shape
+		m_currentShape.emplace(m_previewShape.value());
+		// Create new preview shape
+		m_previewShape.emplace(CreateBlock((ShapeType)(rand() % 7)));
+		m_previewShape.value().Preview();
+		// Move and activate the current shape
+		m_currentShape.value().Spawn();
 	}
 
 	void Tick() {
@@ -376,8 +451,7 @@ private:
 		}
 
 		if (!m_currentShape.has_value()) {
-			m_currentShape.emplace(CreateBlock((ShapeType)(rand() % 7)));
-			//m_currentShape.emplace(CreateBlock(ShapeType::Z));
+			SpawnNext();
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value().Children, Vector3{})) {
 				GameState = GameState::GameOver;
@@ -435,12 +509,6 @@ private:
 
 	int GetColumnIndex(float xPos) {
 		return xPos + 4.5f;
-	}
-
-	void InitGameHud() {
-		float x = 5.5;
-		float y = 8;
-		m_hud = std::make_unique<Hud>(x, y);
 	}
 
 	void TogglePause() {
@@ -511,6 +579,26 @@ private:
 
 		CameraAct();
 
+		if (EnableHold && Keyboard::isKeyPressed(HoldKey) &&
+			m_currentShape.has_value() && m_currentShape.value().CanHold) {
+			if (!m_heldShape.has_value()) {
+				// Put current shape in held
+				m_heldShape.emplace(m_currentShape.value());
+				m_currentShape.reset();
+				m_heldShape.value().Hold();
+				SpawnNext();
+			} else {
+				// Swap current held and current shape
+				ShapeWrapper held = m_heldShape.value();
+				ShapeWrapper current = m_currentShape.value();
+				m_heldShape.emplace(current);
+				m_currentShape.emplace(held);
+				m_currentShape.value().Spawn();
+				m_heldShape.value().Hold();
+			}
+			m_currentShape.value().CanHold = false;
+		}
+
 		if (m_clearPauseTime > 0) {
 			const float numberOfFlashes = 4;
 			for (int i = 0; i < m_height; i++) {
@@ -557,6 +645,14 @@ public:
 		if (m_currentShape.has_value()) {
 			m_currentShape.value().Destroy();
 			m_currentShape.reset();
+		}
+		if (m_previewShape.has_value()) {
+			m_previewShape.value().Destroy();
+			m_previewShape.reset();
+		}
+		if (m_heldShape.has_value()) {
+			m_heldShape.value().Destroy();
+			m_heldShape.reset();
 		}
 		m_gameBoard->Hide();
 		m_hud->Hide();
@@ -673,7 +769,7 @@ public:
 
 	void InitText() {
 		m_gameBoard = std::make_unique<GameBoard>();
-		InitGameHud();
+		m_hud = std::make_unique<Hud>();
 		InitMenus();
 	}
 };
@@ -798,6 +894,7 @@ public:
 		if (m_gameManager->GameState != GameState::Playing)
 			return;
 		if (m_destroyed) return;
+		if (!m_context.getAppearance().isVisible()) return;
 
 		if (Keyboard::isKeyPressed(HardDropKey)) {
 			FallToEnd();
@@ -860,7 +957,7 @@ public:
 };
 
 ShapeWrapper CreateBlock(ShapeType type) {
-	Vector2 startPos = Vector2{ .x = 0, .y = 9 };
+	Vector2 startPos = { .x = 0, .y = 9 };
 	std::vector<EntityContext> entities;
 	switch (type) {
 		case ShapeType::Line:
@@ -892,15 +989,18 @@ ShapeWrapper CreateBlock(ShapeType type) {
 			exit(-1);
 		}
 	}
-	EntityContext shape = CurrentScene::createAndGetEntity(EntityConfig{
-		.transformConfig = TransformConfig{
-			.translation = Vector3::createFromVector2(startPos, zIndexBlocks),
-		},
-		/*.appearanceConfig = AppearanceConfig{
-			.meshIndex = 0,
-			.color = ColorRgb::red
-		},*/
-		.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(type, entities)
-		});
-	return ShapeWrapper{ .Shape = shape, .Children = entities };
+	return {
+		.Shape = CurrentScene::createAndGetEntity(EntityConfig{
+			.transformConfig = TransformConfig{
+				.translation = Vector3::createFromVector2(startPos, zIndexBlocks),
+				.scale = 0,
+			},
+			.appearanceConfig = AppearanceConfig{
+				.visible = false,
+			},
+			.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(type, entities)
+		}),
+		.Children = entities,
+		.SpawnPoint = Vector3::createFromVector2(startPos, zIndexBlocks)
+	};
 }
