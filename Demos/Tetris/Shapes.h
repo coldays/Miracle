@@ -264,3 +264,79 @@ std::vector<EntityContext> CreateZ(Vector2& startPos) {
 	}
 	return entities;
 }
+
+/*
+*
+* Ghost blocks:
+* 
+*/
+
+void AddGhostBlock(std::vector<EntityContext>& entityList, EntityContext& entity) {
+	ColorRgb color = entity.getAppearance().getColor();
+	Vector3 translate = entity.getTransform().getTranslation();
+	const float width = 1.0f;
+	const float height = 0.1f;
+	const float offset = 0.45f;
+	const bool visible = true;
+	entityList.push_back(CurrentScene::createAndGetEntity(
+		EntityConfig{
+			.transformConfig = TransformConfig{
+				.translation = {.x = translate.x - offset, .y = translate.y, .z = translate.z},
+				.scale = Vector3{.x = height, .y = width },
+			},
+			.appearanceConfig = AppearanceConfig{
+				.visible = visible,
+				.meshIndex = 0,
+				.color = color,
+			},
+		}
+	));
+	entityList.push_back(CurrentScene::createAndGetEntity(
+		EntityConfig{
+			.transformConfig = TransformConfig{
+				.translation = {.x = translate.x + offset, .y = translate.y, .z = translate.z},
+				.scale = Vector3{.x = height, .y = width },
+			},
+			.appearanceConfig = AppearanceConfig{
+				.visible = visible,
+				.meshIndex = 0,
+				.color = color,
+			},
+		}
+	));
+	entityList.push_back(CurrentScene::createAndGetEntity(
+		EntityConfig{
+			.transformConfig = TransformConfig{
+				.translation = {.x = translate.x, .y = translate.y + offset, .z = translate.z},
+				.scale = Vector3{.x = width, .y = height },
+			},
+			.appearanceConfig = AppearanceConfig{
+				.visible = visible,
+				.meshIndex = 0,
+				.color = color,
+			},
+		}
+	));
+	entityList.push_back(CurrentScene::createAndGetEntity(
+		EntityConfig{
+			.transformConfig = TransformConfig{
+				.translation = {.x = translate.x, .y = translate.y - offset, .z = translate.z},
+				.scale = Vector3{.x = width, .y = height },
+			},
+			.appearanceConfig = AppearanceConfig{
+				.visible = visible,
+				.meshIndex = 0,
+				.color = color,
+			},
+		}
+	));
+}
+
+std::vector<EntityContext> CreateGhostEntities(std::vector<EntityContext>& entities) {
+	std::vector<EntityContext> ghostEntities;
+	ghostEntities.reserve(entities.size() * 4);
+	for (EntityContext& entity : entities) {
+		AddGhostBlock(ghostEntities, entity);
+	}
+	return ghostEntities;
+}

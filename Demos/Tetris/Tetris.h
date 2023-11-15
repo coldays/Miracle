@@ -383,7 +383,7 @@ private:
 			// Use keyboard event somehow?
 			MoveLeftKey = KeyboardKey::keyLeft;
 			m_keyConfMenu->UpdateNodeText(1, "Move Left: " + GetKeyName(MoveLeftKey));
-		});
+			});
 		m_keyConfMenu->AddMenuNode("Move Right: " + GetKeyName(MoveRightKey), [] {});
 		m_keyConfMenu->AddMenuNode("Rotate Left: " + GetKeyName(RotateLeftKey), [] {});
 		m_keyConfMenu->AddMenuNode("Rotate Right: " + GetKeyName(RotateRightKey), [] {});
@@ -398,12 +398,12 @@ private:
 		// Todo:
 		m_optionsMenu->AddToggleMenuNode("Hold", "On", "Off", &EnableHold);
 		m_optionsMenu->AddToggleMenuNode("Ghost", "On", "Off", &ShowGhost);
-		
+
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
 		m_mainMenu->AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
 		m_mainMenu->AddMenuNode("Options", [this] { SetCurrentMenu(m_optionsMenu); });
 		m_mainMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
-		
+
 		m_gameOverMenu = std::make_unique<Menu>("Game Over!", -12.0f, y);
 		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
 		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
@@ -443,7 +443,8 @@ private:
 			m_clearPauseTime = m_clearPause;
 			if (fullRows < 4) {
 				m_rowCompleteSound.Play();
-			} else {
+			}
+			else {
 				m_theme.Pause();
 				m_tetrisSound.Play();
 			}
@@ -587,7 +588,8 @@ private:
 				m_currentShape.reset();
 				m_heldShape.value().Hold();
 				SpawnNext();
-			} else {
+			}
+			else {
 				// Swap current held and current shape
 				ShapeWrapper held = m_heldShape.value();
 				ShapeWrapper current = m_currentShape.value();
@@ -656,6 +658,7 @@ public:
 		}
 		m_gameBoard->Hide();
 		m_hud->Hide();
+		m_theme.Stop();
 		GameState = GameState::Menu;
 		SetCurrentMenu(m_mainMenu);
 	}
@@ -729,14 +732,18 @@ public:
 		m_currentShape.reset();
 	}
 
-	bool WillOverlap(EntityContext& entity, const Vector3& moveVector) {
-		auto& pos = entity.getTransform().getTranslation();
-		int rowIndex = GetRowIndex(pos.y + moveVector.y);
+	bool WillOverlap(float x, float y, const Vector3& moveVector) {
+		int rowIndex = GetRowIndex(y + moveVector.y);
 		if (rowIndex < 0 || rowIndex >= 20)
 			return false;
-		int colIndex = GetColumnIndex(pos.x + moveVector.x);
+		int colIndex = GetColumnIndex(x + moveVector.x);
 		Row& row = m_rows[rowIndex];
 		return row.HasBlockAt(colIndex);
+	}
+
+	bool WillOverlap(EntityContext& entity, const Vector3& moveVector) {
+		auto& pos = entity.getTransform().getTranslation();
+		return WillOverlap(pos.x, pos.y, moveVector);
 	}
 
 	bool WillOverlap(std::vector<EntityContext>& entities, const Vector3& moveVector) {
@@ -774,6 +781,51 @@ public:
 	}
 };
 
+class QuadBlock {
+private:
+	EntityContext m_blocks[4];
+
+
+public:
+	QuadBlock(EntityContext& e1, EntityContext& e2, EntityContext& e3, EntityContext& e4) :
+		m_blocks{ e1, e2, e3, e4 } {}
+
+	Vector3 GetPos() {
+		Vector3 pos;
+		for (int i = 0; i < 4; i++) {
+			pos += m_blocks[i].getTransform().getTranslation();
+		}
+		pos /= 4.0f;
+		return pos;
+	}
+
+	void Translate(Vector3 diff) {
+		for (int i = 0; i < 4; i++) {
+			m_blocks[i].getTransform().translate(diff, TransformSpace::scene);
+		}
+	}
+
+	void Destroy() {
+		for (EntityContext& ec : m_blocks)
+			ec.destroyEntity();
+	}
+};
+
+class GhostShape {
+private:
+	std::vector<QuadBlock> m_blocks;
+
+public:
+	GhostShape(std::vector<QuadBlock> blocks) {
+		m_blocks = std::move(blocks);
+	}
+
+	void Destroy() {
+		for (QuadBlock& ec : m_blocks)
+			ec.Destroy();
+	}
+};
+
 class Shape : public Behavior {
 private:
 	std::vector<EntityContext> m_entities;
@@ -785,6 +837,7 @@ private:
 	int m_softDroppedBlocks = 0;
 	int m_hardDroppedBlocks = 0;
 	ShapeType m_type;
+	std::optional<GhostShape> m_ghostShape;
 
 	void Fall() {
 		if (m_destroyed) return;
@@ -811,7 +864,8 @@ private:
 				m_gameManager->IncrementScore(m_hardDroppedBlocks * 2);
 				m_gameManager->ScreenShake(m_hardDroppedBlocks / 20.0f);
 				drop = DropType::HardDrop;
-			} else if (m_softDroppedBlocks > 0) {
+			}
+			else if (m_softDroppedBlocks > 0) {
 				m_gameManager->IncrementScore(m_softDroppedBlocks);
 				drop = DropType::SoftDrop;
 			}
@@ -820,6 +874,7 @@ private:
 			// Self-destruct
 			m_context.destroyEntity();
 			m_destroyed = true;
+			ResetGhost();
 			return;
 		}
 		transform.translate(Vector3{ .y = -1 }, TransformSpace::scene);
@@ -875,7 +930,7 @@ private:
 				Logger::info("Cannot rotate: Vertical Bounds");
 				return false;
 			}
-			if (m_gameManager->WillOverlap(ec, newPos - pos )) {
+			if (m_gameManager->WillOverlap(ec, newPos - pos)) {
 				Logger::info("Cannot rotate: Overlap");
 				return false;
 			}
@@ -883,18 +938,64 @@ private:
 		return true;
 	}
 
+	inline void ResetGhost() {
+		if (m_ghostShape.has_value()) {
+			m_ghostShape.value().Destroy();
+			m_ghostShape.reset();
+		}
+	}
+
+	void SpawnGhost() {
+		std::vector<EntityContext> entities = CreateGhostEntities(m_entities);
+		std::vector<QuadBlock> blocks;
+		for (int i = 0; i < entities.size(); i += 4) {
+			blocks.push_back(QuadBlock(entities[i], entities[i + 1], entities[i + 2], entities[i + 3]));
+		}
+		float lowestY = 20;
+		bool isPlaced = false;
+		Vector3 fall = Vector3{ .y = -1 };
+		while (!isPlaced) {
+			for (int i = 0; i < blocks.size(); i++) {
+				Vector3 pos = blocks[i].GetPos();
+				if (lowestY > pos.y) {
+					lowestY = pos.y;
+				}
+				isPlaced |= lowestY <= m_bottomBarrier;
+
+				// Are we touching some other block?
+				isPlaced |= m_gameManager->WillOverlap(pos.x, pos.y, fall);
+
+				if (isPlaced)
+					break;
+			}
+			if (isPlaced)
+				break;
+			for (QuadBlock& qb : blocks) {
+				qb.Translate(fall);
+			}
+		}
+		m_ghostShape.emplace(GhostShape(blocks));
+	}
+
 public:
-	Shape(const EntityContext& context, ShapeType type, std::vector<EntityContext> entities) : Behavior(context) {
+	Shape(const EntityContext& context, ShapeType type,
+		std::vector<EntityContext> entities) : Behavior(context) {
 		m_gameManager = GameManager::Instance;
 		m_type = type;
 		m_entities = std::move(entities);
 	}
 
 	virtual void act() override {
-		if (m_gameManager->GameState != GameState::Playing)
+		if (m_gameManager->GameState != GameState::Playing) {
+			ResetGhost();
 			return;
+		}
 		if (m_destroyed) return;
-		if (!m_context.getAppearance().isVisible()) return;
+		if (!m_context.getAppearance().isVisible()) {
+			ResetGhost();
+			return;
+		}
+		if (ShowGhost && !m_ghostShape.has_value()) SpawnGhost();
 
 		if (Keyboard::isKeyPressed(HardDropKey)) {
 			FallToEnd();
@@ -909,7 +1010,8 @@ public:
 		float tickrate = TickIntervalSeconds;
 		if (Keyboard::isKeyHeld(SoftDropKey)) {
 			tickrate = fminf(tickrate, 0.05);
-		} else {
+		}
+		else {
 			m_softDroppedBlocks = 0;
 		}
 
@@ -920,8 +1022,6 @@ public:
 			// If we are not allowed to move, reset move
 			if (!CanMove(Vector3{ .x = move }))
 				move = 0;
-
-			transform.translate(Vector3{ .x = move }, TransformSpace::scene);
 		}
 		else
 		{
@@ -930,18 +1030,29 @@ public:
 				rotate = 0;
 		}
 
-		auto& parentTranslate = transform.getTranslation();
-		for (EntityContext& ec : m_entities) {
-			auto& childTransform = ec.getTransform();
-			if (rotate != 0) {
-				auto relativeTranslate = childTransform.getTranslation() - parentTranslate;
-				Vector3 rotatedTranslation = parentTranslate + MathUtilities::rotateVector(relativeTranslate,
-					Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
-				rotatedTranslation.z = 0;
-				childTransform.setTranslation(rotatedTranslation);
+		bool performAction = rotate != 0 || move != 0;
+
+		if (performAction) {
+			if (ShowGhost) {
+				ResetGhost();
 			}
-			else {
-				childTransform.translate(Vector3{ .x = move }, TransformSpace::scene);
+
+			// Move parent shape
+			transform.translate(Vector3{ .x = move }, TransformSpace::scene);
+
+			auto& parentTranslate = transform.getTranslation();
+			for (EntityContext& ec : m_entities) {
+				auto& childTransform = ec.getTransform();
+				if (rotate != 0) {
+					auto relativeTranslate = childTransform.getTranslation() - parentTranslate;
+					Vector3 rotatedTranslation = parentTranslate + MathUtilities::rotateVector(relativeTranslate,
+						Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
+					rotatedTranslation.z = 0;
+					childTransform.setTranslation(rotatedTranslation);
+				}
+				else {
+					childTransform.translate(Vector3{ .x = move }, TransformSpace::scene);
+				}
 			}
 		}
 
@@ -989,7 +1100,7 @@ ShapeWrapper CreateBlock(ShapeType type) {
 			exit(-1);
 		}
 	}
-	return {
+	return ShapeWrapper{
 		.Shape = CurrentScene::createAndGetEntity(EntityConfig{
 			.transformConfig = TransformConfig{
 				.translation = Vector3::createFromVector2(startPos, zIndexBlocks),
@@ -1001,6 +1112,6 @@ ShapeWrapper CreateBlock(ShapeType type) {
 			.behaviorFactory = BehaviorFactory::createFactoryFor<Shape>(type, entities)
 		}),
 		.Children = entities,
-		.SpawnPoint = Vector3::createFromVector2(startPos, zIndexBlocks)
+		.SpawnPoint = Vector3::createFromVector2(startPos, zIndexBlocks),
 	};
 }
