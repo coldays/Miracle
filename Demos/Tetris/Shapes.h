@@ -24,7 +24,7 @@ ColorRgb brown = ColorRgb::createFromColorCode(0x00ffdd);
 std::vector<EntityContext> CreateLine(Vector2& startPos) {
 	float startX = -2.5 + startPos.x;
 	float startY = -0.5 + startPos.y;
-	ColorRgb line_color = ColorRgb::green;
+	ColorRgb line_color = ColorRgbs::green;
 	std::vector<EntityContext> entities;
 	for (int i = 0; i < 4; i++) {
 		entities.push_back(CurrentScene::createAndGetEntity(EntityConfig{
@@ -48,7 +48,7 @@ std::vector<EntityContext> CreateLine(Vector2& startPos) {
 std::vector<EntityContext> CreateSquare(Vector2& startPos) {
 	float startX = -.5 + startPos.x;
 	float startY = -.5 + startPos.y;
-	ColorRgb line_color = ColorRgb::blue;
+	ColorRgb line_color = ColorRgbs::blue;
 	std::vector<EntityContext> entities;
 	for (float x = 0; x < 2; x++) {
 		for (int y = 0; y < 2; y++) {
@@ -74,7 +74,7 @@ std::vector<EntityContext> CreateSquare(Vector2& startPos) {
 std::vector<EntityContext> CreateT(Vector2& startPos) {
 	float startX = -0.5 + startPos.x;
 	float startY = -0.5 + startPos.y;
-	ColorRgb line_color = ColorRgb::yellow;
+	ColorRgb line_color = ColorRgbs::yellow;
 	std::vector<EntityContext> entities;
 	entities.push_back(CurrentScene::createAndGetEntity(EntityConfig{
 							.transformConfig = TransformConfig{
@@ -150,7 +150,7 @@ std::vector<EntityContext> CreateJ(Vector2& startPos) {
 std::vector<EntityContext> CreateL(Vector2& startPos) {
 	float startX = -1.5 + startPos.x;
 	float startY = -0.5 + startPos.y;
-	ColorRgb line_color = ColorRgb::red;
+	ColorRgb line_color = ColorRgbs::red;
 	std::vector<EntityContext> entities;
 	entities.push_back(CurrentScene::createAndGetEntity(EntityConfig{
 							.transformConfig = TransformConfig{

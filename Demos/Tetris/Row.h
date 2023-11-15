@@ -8,7 +8,7 @@ class Row {
 private:
 	std::optional<EntityContext> m_entities[10];
 	std::unordered_map<int, ColorRgb> m_entityColorMap;
-	const ColorRgb m_clearColor = ColorRgb::white;
+	const ColorRgb m_clearColor = ColorRgbs::white;
 	// Set to max so that we trigger animation on first frame
 	float m_tickTime = FLT_MAX;
 

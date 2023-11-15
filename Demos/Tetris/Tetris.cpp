@@ -43,7 +43,7 @@ void CreateBorders() {
 							},
 							.appearanceConfig = AppearanceConfig{
 								.meshIndex = 0,
-								.color = ColorRgb::black
+								.color = ColorRgbs::black
 							}
 		});
 	CurrentScene::createEntity(EntityConfig{
@@ -57,7 +57,7 @@ void CreateBorders() {
 							},
 							.appearanceConfig = AppearanceConfig{
 								.meshIndex = 0,
-								.color = ColorRgb::black
+								.color = ColorRgbs::black
 							}
 		});
 }
@@ -74,7 +74,7 @@ void CreateCrosshair() {
 							},
 							.appearanceConfig = AppearanceConfig{
 								.meshIndex = 0,
-								.color = ColorRgb::red
+								.color = ColorRgbs::red
 							}
 		});
 }

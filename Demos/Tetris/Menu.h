@@ -6,21 +6,24 @@
 
 using namespace Miracle;
 
+bool MenuIgnoreKeyboard = false;
+int MenuSkipFrame = 0;
+
 class MenuNode {
 private:
-	std::function<void()> Action;
+	std::function<void(MenuNode*)> Action;
 	Text NodeText;
 
 public:
-	MenuNode(std::string text, float x, float y, std::function<void()> action) {
-		NodeText = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, text);
+	MenuNode(std::string text, float x, float y, std::function<void(MenuNode*)> action) {
+		NodeText = Text(Vector2{ .x = x, .y = y }, 1, ColorRgbs::white, text);
 		Action = action;
 		X = x;
 		Y = y;
 	}
 
 	void Execute() {
-		Action();
+		Action(this);
 	}
 
 	void Show() {
@@ -55,7 +58,7 @@ public:
 	ToggleMenuNode(std::string text, std::string enabledVerb, std::string disabledVerb,
 		bool* value, float x, float y) :
 		Enabled(value),
-		MenuNode(text, x, y, [this] { Toggle(); }) {
+		MenuNode(text, x, y, [this](MenuNode*) { Toggle(); }) {
 		BaseText = text;
 		EnabledVerb = enabledVerb;
 		DisabledVerb = disabledVerb;
@@ -103,7 +106,7 @@ private:
 			.appearanceConfig = AppearanceConfig{
 				.visible = false,
 				.meshIndex = 1,
-				.color = ColorRgb::red,
+				.color = ColorRgbs::red,
 			}
 		});
 	}
@@ -121,7 +124,7 @@ private:
 public:
 	Menu(std::string header, float x, float y) :
 		m_selectorIndicator(InitSelector(x, y)),
-		m_header(Vector2{ .x = x, .y = y}, 1.2, ColorRgb::white, header)
+		m_header(Vector2{ .x = x, .y = y}, 1.2, ColorRgbs::white, header)
 	{
 		m_header.Hide();
 		m_initialX = x;
@@ -130,7 +133,7 @@ public:
 		m_currentX = x + m_entryIndent;
 	}
 
-	void AddMenuNode(std::string text, std::function<void()> action) {
+	void AddMenuNode(std::string text, std::function<void(MenuNode*)> action) {
 		float x = m_currentX;
 		float y = m_currentY;
 		m_menuNodes.emplace_back(new MenuNode(text, x, y, action));
@@ -152,13 +155,17 @@ public:
 		m_currentY -= m_entrySpacing;
 	}
 
-	void UpdateNodeText(int index, std::string newText) {
-		m_menuNodes[index]->ChangeText(newText);
-	}
-
 	void Act() {
 		if (m_isHidden)
 			return;
+
+		if (MenuIgnoreKeyboard) {
+			return;
+		}
+		else if (MenuSkipFrame > 0) {
+			MenuSkipFrame--;
+			return;
+		}
 
 		m_time += DeltaTime::get();
 		if (m_time > m_animationTime) {

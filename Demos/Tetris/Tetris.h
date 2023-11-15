@@ -91,30 +91,30 @@ public:
 		const float xIndent = 0.5;
 		const float headerSpacing = 2;
 		const float spacing = 1;
-		m_holdHeader = Text(Vector2{ .x = -10, .y = y }, 1, ColorRgb::white, "Hold:");
+		m_holdHeader = Text(Vector2{ .x = -10, .y = y }, 1, ColorRgbs::white, "Hold:");
 		m_holdHeader.Hide();
 		HoldBlockPos = Vector3{ .x = -8, .y = y - headerSpacing, .z = zIndexGui };
-		m_previewHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Preview:");
+		m_previewHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgbs::white, "Preview:");
 		m_previewHeader.Hide();
 		y -= headerSpacing;
 		PreviewBlockPos = { .x = x + 2.5f, .y = y, .z = zIndexGui };
 		y -= 3.0f;
-		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Score:");
+		m_scoreHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgbs::white, "Score:");
 		m_scoreHeader.Hide();
 		y -= spacing;
-		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_scoreText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgbs::white, "0");
 		m_scoreText.Hide();
 		y -= headerSpacing;
-		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Level:");
+		m_levelHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgbs::white, "Level:");
 		m_levelHeader.Hide();
 		y -= spacing;
-		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_levelText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgbs::white, "0");
 		m_levelText.Hide();
 		y -= headerSpacing;
-		m_linesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgb::white, "Lines:");
+		m_linesHeader = Text(Vector2{ .x = x, .y = y }, 1, ColorRgbs::white, "Lines:");
 		m_linesHeader.Hide();
 		y -= spacing;
-		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgb::white, "0");
+		m_linesText = Text(Vector2{ .x = x + xIndent, .y = y }, 1, ColorRgbs::white, "0");
 		m_linesText.Hide();
 	}
 
@@ -186,7 +186,7 @@ public:
 								.appearanceConfig = AppearanceConfig{
 									.visible = false,
 									.meshIndex = 0,
-									.color = ColorRgb::black,
+									.color = ColorRgbs::black,
 								}
 				}));
 		}
@@ -203,7 +203,7 @@ public:
 							.appearanceConfig = AppearanceConfig{
 								.visible = false,
 								.meshIndex = 0,
-								.color = ColorRgb::black
+								.color = ColorRgbs::black
 							}
 				}));
 		}
@@ -293,6 +293,10 @@ std::string GetKeyName(KeyboardKey key) {
 			return "up";
 		case KeyboardKey::keyDown:
 			return "down";
+		case KeyboardKey::keyEnter:
+			return "enter";
+		case KeyboardKey::keyEscape:
+			return "escape";
 		default:
 			return "unknown";
 	}
@@ -322,7 +326,7 @@ enum class DropType {
 	HardDrop
 };
 
-class GameManager : public Behavior {
+class GameManager : public BehaviorBase {
 private:
 	const int m_maxLevel = 20;
 	const int m_height = 20;
@@ -368,50 +372,64 @@ private:
 		m_currentMenu->Show();
 	}
 
+	void InitKeyConfigMenu(std::string desc, KeyboardKey* keyPtr) {
+		m_keyConfMenu->AddMenuNode(desc + " " + GetKeyName(*keyPtr), [desc, keyPtr](MenuNode* node) {
+			MenuIgnoreKeyboard = true;
+			MenuSkipFrame = 2;
+			Keyboard::setKeyPressedCallback([node, desc, keyPtr](KeyboardKey key) {
+				if (key == KeyboardKey::keyEscape) {
+					Keyboard::unsetKeyPressedCallback();
+					MenuIgnoreKeyboard = false;
+					return;
+				}
+				*keyPtr = key;
+				node->ChangeText(desc + " " + GetKeyName(key));
+				Keyboard::unsetKeyPressedCallback();
+				MenuIgnoreKeyboard = false;
+				});
+			});
+	}
+
 	void InitMenus() {
 		float x = -5;
 		float y = 8;
 
 		m_levelMenu = std::make_unique<Menu>("Level", x, y);
 		for (int i = 0; i < 10; i++) {
-			m_levelMenu->AddMenuNode(std::to_string(i), [this, i] { SetLevel(i); StartGame(); });
+			m_levelMenu->AddMenuNode(std::to_string(i), [this, i](MenuNode*) { SetLevel(i); StartGame(); });
 		}
 
 		m_keyConfMenu = std::make_unique<Menu>("Key config", x, y);
-		m_keyConfMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_optionsMenu); });
-		m_keyConfMenu->AddMenuNode("Move Left: " + GetKeyName(MoveLeftKey), [this] {
-			// Use keyboard event somehow?
-			MoveLeftKey = KeyboardKey::keyLeft;
-			m_keyConfMenu->UpdateNodeText(1, "Move Left: " + GetKeyName(MoveLeftKey));
-			});
-		m_keyConfMenu->AddMenuNode("Move Right: " + GetKeyName(MoveRightKey), [] {});
-		m_keyConfMenu->AddMenuNode("Rotate Left: " + GetKeyName(RotateLeftKey), [] {});
-		m_keyConfMenu->AddMenuNode("Rotate Right: " + GetKeyName(RotateRightKey), [] {});
-		m_keyConfMenu->AddMenuNode("Soft Drop: " + GetKeyName(SoftDropKey), [] {});
-		m_keyConfMenu->AddMenuNode("Hard Drop: " + GetKeyName(HardDropKey), [] {});
+		m_keyConfMenu->AddMenuNode("Back", [this](MenuNode*) { SetCurrentMenu(m_optionsMenu); });
+		InitKeyConfigMenu("Move left:", &MoveLeftKey);
+		InitKeyConfigMenu("Move right:", &MoveRightKey);
+		InitKeyConfigMenu("Rotate left:", &RotateLeftKey);
+		InitKeyConfigMenu("Rotate right:", &RotateRightKey);
+		InitKeyConfigMenu("Soft drop:", &SoftDropKey);
+		InitKeyConfigMenu("Hard drop:", &HardDropKey);
 
 		m_optionsMenu = std::make_unique<Menu>("Options", x, y);
-		m_optionsMenu->AddMenuNode("Back", [this] { SetCurrentMenu(m_mainMenu); });
-		m_optionsMenu->AddMenuNode("Key config", [this] { SetCurrentMenu(m_keyConfMenu); });
+		m_optionsMenu->AddMenuNode("Back", [this](MenuNode*) { SetCurrentMenu(m_mainMenu); });
+		m_optionsMenu->AddMenuNode("Key config", [this](MenuNode*) { SetCurrentMenu(m_keyConfMenu); });
 		m_optionsMenu->AddToggleMenuNode("Grid", "Shown", "Hidden", &m_gameBoard->ShowGridLines);
 		m_optionsMenu->AddToggleMenuNode("Screen shake", "On", "Off", &m_screenShakeEnabled);
-		// Todo:
+
 		m_optionsMenu->AddToggleMenuNode("Hold", "On", "Off", &EnableHold);
 		m_optionsMenu->AddToggleMenuNode("Ghost", "On", "Off", &ShowGhost);
 
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
-		m_mainMenu->AddMenuNode("Play", [this] { SetCurrentMenu(m_levelMenu);  });
-		m_mainMenu->AddMenuNode("Options", [this] { SetCurrentMenu(m_optionsMenu); });
-		m_mainMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+		m_mainMenu->AddMenuNode("Play", [this](MenuNode*) { SetCurrentMenu(m_levelMenu);  });
+		m_mainMenu->AddMenuNode("Options", [this](MenuNode*) { SetCurrentMenu(m_optionsMenu); });
+		m_mainMenu->AddMenuNode("Exit", [](MenuNode*) { CurrentApp::close(); });
 
 		m_gameOverMenu = std::make_unique<Menu>("Game Over!", -12.0f, y);
-		m_gameOverMenu->AddMenuNode("Restart", [this] { ResetGame(); });
-		m_gameOverMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+		m_gameOverMenu->AddMenuNode("Restart", [this](MenuNode*) { ResetGame(); });
+		m_gameOverMenu->AddMenuNode("Exit", [](MenuNode*) { CurrentApp::close(); });
 
 		m_pauseMenu = std::make_unique<Menu>("Pause", x, y);
-		m_pauseMenu->AddMenuNode("Resume", [this] { TogglePause(); });
-		m_pauseMenu->AddMenuNode("Main Menu", [this] { ResetGame(); });
-		m_pauseMenu->AddMenuNode("Exit", [] { CurrentApp::close(); });
+		m_pauseMenu->AddMenuNode("Resume", [this](MenuNode*) { TogglePause(); });
+		m_pauseMenu->AddMenuNode("Main Menu", [this](MenuNode*) { ResetGame(); });
+		m_pauseMenu->AddMenuNode("Exit", [](MenuNode*) { CurrentApp::close(); });
 
 		SetCurrentMenu(m_mainMenu);
 	}
@@ -419,11 +437,11 @@ private:
 	void SpawnNext() {
 		// Will only happen on first tick
 		if (!m_previewShape.has_value())
-			m_previewShape.emplace(CreateBlock((ShapeType)(rand() % 7)));
+			m_previewShape.emplace(CreateBlock((ShapeType)(CurrentApp::getRandom().next<int>(6))));
 		// Swap currentshape with preview shape
 		m_currentShape.emplace(m_previewShape.value());
 		// Create new preview shape
-		m_previewShape.emplace(CreateBlock((ShapeType)(rand() % 7)));
+		m_previewShape.emplace(CreateBlock((ShapeType)(CurrentApp::getRandom().next<int>(6))));
 		m_previewShape.value().Preview();
 		// Move and activate the current shape
 		m_currentShape.value().Spawn();
@@ -628,7 +646,7 @@ public:
 	inline static GameManager* Instance;
 	GameState GameState = GameState::Menu;
 
-	GameManager(const EntityContext& context) : Behavior(context) {
+	GameManager(const EntityContext& context) : BehaviorBase(context) {
 		Instance = this;
 		srand(time(0));
 
@@ -826,7 +844,7 @@ public:
 	}
 };
 
-class Shape : public Behavior {
+class Shape : public BehaviorBase {
 private:
 	std::vector<EntityContext> m_entities;
 	float m_tickTime = 0;
@@ -920,7 +938,7 @@ private:
 			auto pos = childTransform.getTranslation();
 			auto relativeTranslate = pos - parentTranslate;
 			Vector3 rotatedTranslation = MathUtilities::rotateVector(relativeTranslate,
-				Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
+				Quaternion::createRotation(Vector3s::forward, 90.0_deg * rotate));
 			Vector3 newPos = parentTranslate + rotatedTranslation;
 			if (IsOutsideOfBoundsHorizontal(newPos.x)) {
 				Logger::info("Cannot rotate: Horizontal Bounds");
@@ -979,7 +997,7 @@ private:
 
 public:
 	Shape(const EntityContext& context, ShapeType type,
-		std::vector<EntityContext> entities) : Behavior(context) {
+		std::vector<EntityContext> entities) : BehaviorBase(context) {
 		m_gameManager = GameManager::Instance;
 		m_type = type;
 		m_entities = std::move(entities);
@@ -1046,7 +1064,7 @@ public:
 				if (rotate != 0) {
 					auto relativeTranslate = childTransform.getTranslation() - parentTranslate;
 					Vector3 rotatedTranslation = parentTranslate + MathUtilities::rotateVector(relativeTranslate,
-						Quaternion::createRotation(Vector3::forward, 90.0_deg * rotate));
+						Quaternion::createRotation(Vector3s::forward, 90.0_deg * rotate));
 					rotatedTranslation.z = 0;
 					childTransform.setTranslation(rotatedTranslation);
 				}
