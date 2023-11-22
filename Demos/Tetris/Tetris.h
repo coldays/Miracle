@@ -9,6 +9,7 @@
 #include "Menu.h"
 #include "Constants.h"
 #include <iostream>
+#include "ScoreBoard.h"
 
 using namespace Miracle;
 
@@ -317,7 +318,9 @@ enum class GameState {
 	Menu,
 	Playing,
 	GameOver,
-	Paused
+	Paused,
+	EnterHighScore,
+	HighScore,
 };
 
 enum class DropType {
@@ -354,6 +357,13 @@ private:
 	Sound m_levelUpSound = Sound("LevelUp.wav");
 	Sound m_clickSound = Sound("Click.wav");
 	Sound m_hardDropSound = Sound("HardDrop.wav");
+
+	std::unique_ptr<Scoreboard> m_classicScoreboard;
+	std::unique_ptr<Scoreboard> m_ghostOnlyScoreboard;
+	std::unique_ptr<Scoreboard> m_holdOnlyScoreboard;
+	std::unique_ptr<Scoreboard> m_fullModernScoreboard;
+
+	Scoreboard* m_currentScoreBoard;
 
 	std::unique_ptr<Menu> m_mainMenu;
 	std::unique_ptr<Menu> m_levelMenu;
@@ -418,7 +428,8 @@ private:
 		m_optionsMenu->AddToggleMenuNode("Ghost", "On", "Off", &ShowGhost);
 
 		m_mainMenu = std::make_unique<Menu>("Tetris", x, y);
-		m_mainMenu->AddMenuNode("Play", [this](MenuNode*) { SetCurrentMenu(m_levelMenu);  });
+		m_mainMenu->AddMenuNode("Play", [this](MenuNode*) { SetCurrentMenu(m_levelMenu); });
+		m_mainMenu->AddMenuNode("High score", [this](MenuNode*) { ShowHighScore(); });
 		m_mainMenu->AddMenuNode("Options", [this](MenuNode*) { SetCurrentMenu(m_optionsMenu); });
 		m_mainMenu->AddMenuNode("Exit", [](MenuNode*) { CurrentApp::close(); });
 
@@ -432,6 +443,47 @@ private:
 		m_pauseMenu->AddMenuNode("Exit", [](MenuNode*) { CurrentApp::close(); });
 
 		SetCurrentMenu(m_mainMenu);
+	}
+
+	void ShowHighScore() {
+		m_currentMenu->Hide();
+		m_gameBoard->Hide();
+		m_hud->Hide();
+		m_currentScoreBoard = GetDefaultScoreboard();
+		m_currentScoreBoard->Show();
+		GameState = GameState::HighScore;
+	}
+
+	Scoreboard* GetDefaultScoreboard() {
+		if (!ShowGhost && !EnableHold)
+			return m_classicScoreboard.get();
+		if (!ShowGhost && EnableHold)
+			return m_holdOnlyScoreboard.get();
+		if (ShowGhost && !EnableHold)
+			return m_ghostOnlyScoreboard.get();
+		return m_fullModernScoreboard.get();
+	}
+
+	Scoreboard* GetPrevScoreboard() {
+		if (m_currentScoreBoard == m_classicScoreboard.get())
+			return m_fullModernScoreboard.get();
+		if (m_currentScoreBoard == m_fullModernScoreboard.get())
+			return m_ghostOnlyScoreboard.get();
+		if (m_currentScoreBoard == m_ghostOnlyScoreboard.get())
+			return m_holdOnlyScoreboard.get();
+		if (m_currentScoreBoard == m_holdOnlyScoreboard.get())
+			return m_classicScoreboard.get();
+	}
+
+	Scoreboard* GetNextScoreboard() {
+		if (m_currentScoreBoard == m_classicScoreboard.get())
+			return m_holdOnlyScoreboard.get();
+		if (m_currentScoreBoard == m_holdOnlyScoreboard.get())
+			return m_ghostOnlyScoreboard.get();
+		if (m_currentScoreBoard == m_ghostOnlyScoreboard.get())
+			return m_fullModernScoreboard.get();
+		if (m_currentScoreBoard == m_fullModernScoreboard.get())
+			return m_classicScoreboard.get();
 	}
 
 	void SpawnNext() {
@@ -787,6 +839,22 @@ public:
 			case GameState::Paused:
 				m_pauseMenu->Act();
 				break;
+			case GameState::HighScore:
+				if (Keyboard::isKeyPressed(KeyboardKey::keyLeft)) {
+					m_currentScoreBoard->Hide();
+					m_currentScoreBoard = GetPrevScoreboard();
+					m_currentScoreBoard->Show();
+				}
+				if (Keyboard::isKeyPressed(KeyboardKey::keyRight)) {
+					m_currentScoreBoard->Hide();
+					m_currentScoreBoard = GetNextScoreboard();
+					m_currentScoreBoard->Show();
+				}
+				if (Keyboard::isKeyPressed(KeyboardKey::keyEscape)) {
+					m_currentScoreBoard->Hide();
+					ResetGame();
+				}
+				break;
 			default:
 				break;
 		}
@@ -796,6 +864,11 @@ public:
 		m_gameBoard = std::make_unique<GameBoard>();
 		m_hud = std::make_unique<Hud>();
 		InitMenus();
+
+		m_classicScoreboard = std::make_unique<Scoreboard>("Classic", "classic.csv");
+		m_ghostOnlyScoreboard = std::make_unique<Scoreboard>("Ghost Only", "ghost_only.csv");
+		m_holdOnlyScoreboard = std::make_unique<Scoreboard>("Hold Only", "hold_only.csv");
+		m_fullModernScoreboard = std::make_unique<Scoreboard>("Full Modern", "full_modern.csv");
 	}
 };
 
