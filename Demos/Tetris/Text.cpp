@@ -117,6 +117,7 @@ Text::Text(Vector2 pos, float scale, ColorRgb color, std::string text) {
 	m_pos = pos;
 	m_scale = scale;
 	m_color = color;
+	m_text = text;
 
 	CreateText(pos, scale, color, text);
 }
@@ -124,6 +125,12 @@ Text::Text(Vector2 pos, float scale, ColorRgb color, std::string text) {
 void Text::ChangeText(std::string text) {
 	Clear();
 	CreateText(m_pos, m_scale, m_color, text);
+}
+
+void Text::ChangeColor(ColorRgb color) {
+	m_color = color;
+	Clear();
+	CreateText(m_pos, m_scale, m_color, m_text);
 }
 
 void Text::Move(Vector2 dest) {

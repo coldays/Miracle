@@ -12,6 +12,7 @@ private:
 	Vector2 m_pos;
 	float m_scale;
 	ColorRgb m_color;
+	std::string m_text;
 
 	void CreateGlyphEntity(Vector2 pos, float scale, ColorRgb color, char c);
 
@@ -23,6 +24,7 @@ public:
 	Text();
 	Text(Vector2 pos, float scale, ColorRgb color, std::string text);
 	void ChangeText(std::string text);
+	void ChangeColor(ColorRgb color);
 	void Move(Vector2 dest);
 	void Show();
 	void Hide();

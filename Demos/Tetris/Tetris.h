@@ -319,8 +319,7 @@ enum class GameState {
 	Playing,
 	GameOver,
 	Paused,
-	EnterHighScore,
-	HighScore,
+	HighScore
 };
 
 enum class DropType {
@@ -333,7 +332,7 @@ class GameManager : public BehaviorBase {
 private:
 	const int m_maxLevel = 20;
 	const int m_height = 20;
-	int m_score = 0;
+	unsigned long long m_score = 0;
 	int m_lines = 0;
 	int m_level = 0;
 	Row m_rows[20];
@@ -372,6 +371,7 @@ private:
 	std::unique_ptr<Menu> m_gameOverMenu;
 	std::unique_ptr<Menu> m_pauseMenu;
 	Menu* m_currentMenu = nullptr;
+
 	std::unique_ptr<Hud> m_hud;
 	std::unique_ptr<GameBoard> m_gameBoard;
 
@@ -525,17 +525,33 @@ private:
 			SpawnNext();
 			// Check if spawned block overlaps with any row
 			if (WillOverlap(m_currentShape.value().Children, Vector3{})) {
-				GameState = GameState::GameOver;
 				Logger::info("**** GAME OVER! ****");
 				Logger::info(std::string("\tScore: ") + std::to_string(m_score));
 				Logger::info(std::string("\tLevel: ") + std::to_string(m_level));
 				Logger::info(std::string("\tLines: ") + std::to_string(m_lines));
+				Scoreboard* currentScoreboard = GetDefaultScoreboard();
+				if (!currentScoreboard->MadeScoreboard(m_score)) {
+					GameState = GameState::GameOver;
+					SetCurrentMenu(m_gameOverMenu);
+				}
+				else {
+					Logger::info("New highscore!");
+					GameState = GameState::HighScore;
+					int placement = currentScoreboard->Add(m_score, m_lines, m_level);
+					ShowEnterHighscore(placement);
+				}
 				m_theme.Stop();
 				m_gameOverSound.Play();
-				SetCurrentMenu(m_gameOverMenu);
 				return;
 			}
 		}
+	}
+
+	void ShowEnterHighscore(int placement) {
+		m_gameBoard->Hide();
+		m_hud->Hide();
+		ResetGame();
+		ShowHighScore();
 	}
 
 	int ClearFullRows() {
@@ -694,6 +710,24 @@ private:
 		}
 	}
 
+	void ResetBoard() {
+		for (Row& row : m_rows) {
+			row.Destroy();
+		}
+		if (m_currentShape.has_value()) {
+			m_currentShape.value().Destroy();
+			m_currentShape.reset();
+		}
+		if (m_previewShape.has_value()) {
+			m_previewShape.value().Destroy();
+			m_previewShape.reset();
+		}
+		if (m_heldShape.has_value()) {
+			m_heldShape.value().Destroy();
+			m_heldShape.reset();
+		}
+	}
+
 public:
 	inline static GameManager* Instance;
 	GameState GameState = GameState::Menu;
@@ -711,21 +745,7 @@ public:
 		m_score = 0;
 		m_hud->UpdateScore(m_score);
 		m_hud->UpdateLines(m_lines);
-		for (Row& row : m_rows) {
-			row.Destroy();
-		}
-		if (m_currentShape.has_value()) {
-			m_currentShape.value().Destroy();
-			m_currentShape.reset();
-		}
-		if (m_previewShape.has_value()) {
-			m_previewShape.value().Destroy();
-			m_previewShape.reset();
-		}
-		if (m_heldShape.has_value()) {
-			m_heldShape.value().Destroy();
-			m_heldShape.reset();
-		}
+		ResetBoard();
 		m_gameBoard->Hide();
 		m_hud->Hide();
 		m_theme.Stop();
@@ -840,6 +860,8 @@ public:
 				m_pauseMenu->Act();
 				break;
 			case GameState::HighScore:
+				if (m_currentScoreBoard->IsAddingEntry)
+					break;
 				if (Keyboard::isKeyPressed(KeyboardKey::keyLeft)) {
 					m_currentScoreBoard->Hide();
 					m_currentScoreBoard = GetPrevScoreboard();
